@@ -63,7 +63,7 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 	_ = d.ackChatMessage(c, msg.Mid)
 
 	// 对方不在线, 下发确认包
-	if !d.client.IsOnline(gate.NewID2(msg.To)) {
+	if !d.def.GetClientInterface().IsOnline(gate.NewID2(msg.To)) {
 		_ = d.ackNotifyMessage(c, msg.Mid)
 		//err := msgdao.AddOfflineMessage(msg.To, msg.Mid)
 		//if err != nil {
@@ -82,13 +82,13 @@ func (d *MessageHandler) handleChatRecallMessage(c *gate.Info, msg *messages.Gli
 func (d *MessageHandler) ackNotifyMessage(c *gate.Info, mid int64) error {
 	ackNotify := messages.NewAckNotify(mid)
 	msg := messages.NewMessage(0, messages.ActionAckNotify, &ackNotify)
-	return d.client.EnqueueMessage(c.ID, msg)
+	return d.def.GetClientInterface().EnqueueMessage(c.ID, msg)
 }
 
 func (d *MessageHandler) ackChatMessage(c *gate.Info, mid int64) error {
 	ackMsg := messages.NewAckMessage(mid, 0)
 	ack := messages.NewMessage(0, messages.ActionAckMessage, &ackMsg)
-	return d.client.EnqueueMessage(c.ID, ack)
+	return d.def.GetClientInterface().EnqueueMessage(c.ID, ack)
 }
 
 // dispatchOffline 接收者不在线, 离线推送
@@ -102,5 +102,5 @@ func (d *MessageHandler) dispatchOnline(c *gate.Info, msg *messages.ChatMessage)
 	receiverMsg := msg
 	msg.From = c.ID.UID()
 	dispatchMsg := messages.NewMessage(-1, messages.ActionChatMessage, receiverMsg)
-	return d.client.EnqueueMessage(c.ID, dispatchMsg)
+	return d.def.GetClientInterface().EnqueueMessage(c.ID, dispatchMsg)
 }

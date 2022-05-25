@@ -19,6 +19,7 @@ type Server interface {
 }
 
 type GatewayServer struct {
+	gate.Interface
 
 	// clients is a map of all connected clients
 	clients *clients

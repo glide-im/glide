@@ -23,7 +23,7 @@ type Server interface {
 
 	SetGate(g gate.Interface)
 
-	SetGroup(g subscription.Interface)
+	SetSubscription(g subscription.Interface)
 
 	Run() error
 }

@@ -8,44 +8,62 @@ import (
 	"github.com/glide-im/glide/pkg/subscription"
 )
 
-type options struct {
-	messaging messaging.Interface
-	gate      gate.Interface
-	group     subscription.Interface
+type Options struct {
+	Messaging    messaging.Interface
+	Gate         gate.Interface
+	Subscription subscription.Interface
 }
 
-func bootGroupServer(opts options) error {
-	server, ok := opts.group.(subscription.Server)
-	if !ok {
-		return errors.New("group server not implemented")
+func Bootstrap(opts *Options) error {
+
+	_, ok := opts.Gate.(gate.Server)
+	if ok {
+		return bootGatewayServer(opts)
 	}
-	server.SetGate(opts.gate)
+	_, ok = opts.Messaging.(messaging.Server)
+	if ok {
+		return bootMessagingServer(opts)
+	}
+	_, ok = opts.Subscription.(subscription.Server)
+	if ok {
+		return bootSubscriptionServer(opts)
+	}
+
+	return errors.New("no server found")
+}
+
+func bootSubscriptionServer(opts *Options) error {
+	server, ok := opts.Subscription.(subscription.Server)
+	if !ok {
+		return errors.New("subscription server not implemented")
+	}
+	server.SetGate(opts.Gate)
 	return server.Run()
 }
 
-func bootMessagingServer(opts options) error {
-	server, ok := opts.messaging.(messaging.Server)
+func bootMessagingServer(opts *Options) error {
+	server, ok := opts.Messaging.(messaging.Server)
 	if !ok {
-		return errors.New("messaging does not implement messaging.Server")
+		return errors.New("messaging does not implement Messaging.impl")
 	}
-	server.SetGate(opts.gate)
-	server.SetGroup(opts.group)
+	server.SetGate(opts.Gate)
+	server.SetSubscription(opts.Subscription)
 	return server.Run()
 }
 
-func bootGatewayServer(opts options) error {
+func bootGatewayServer(opts *Options) error {
 
-	gateway, ok := opts.gate.(gate.Server)
+	gateway, ok := opts.Gate.(gate.Server)
 	if !ok {
-		return errors.New("gate is not a gateway server")
+		return errors.New("Gate is not a gateway server")
 	}
 
-	if opts.messaging == nil {
-		return errors.New("can't boot a gateway server without a messaging interface")
+	if opts.Messaging == nil {
+		return errors.New("can't boot a gateway server without a Messaging interface")
 	}
 
 	gateway.SetMessageHandler(func(cliInfo *gate.Info, message *messages.GlideMessage) {
-		err := opts.messaging.Handle(cliInfo, message)
+		err := opts.Messaging.Handle(cliInfo, message)
 		if err != nil {
 			// TODO: Log error
 		}

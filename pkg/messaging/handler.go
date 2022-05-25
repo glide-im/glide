@@ -24,11 +24,11 @@ type Handler struct {
 	// handlers message handler function map for message action
 	handlers map[messages.Action]HandlerFunc
 
-	group subscription.Interface
-	gate  gate.Interface
+	subscription subscription.Interface
+	gate         gate.Interface
 }
 
-func NewDefaultImpl(store message_store.MessageStore, group subscription.Interface, gate gate.Interface) (Interface, error) {
+func NewDefaultImpl(store message_store.MessageStore) (*Handler, error) {
 
 	if store == nil {
 		return nil, errors.New("store is nil")
@@ -37,8 +37,6 @@ func NewDefaultImpl(store message_store.MessageStore, group subscription.Interfa
 	ret := Handler{
 		store:    store,
 		handlers: map[messages.Action]HandlerFunc{},
-		group:    group,
-		gate:     gate,
 	}
 
 	var err error
@@ -86,6 +84,18 @@ func (d *Handler) Handle(cInfo *gate.Info, msg *messages.GlideMessage) error {
 	return nil
 }
 
+func (d *Handler) Run() error {
+	return errors.New("not implemented")
+}
+
+func (d *Handler) SetGate(g gate.Interface) {
+	d.gate = g
+}
+
+func (d *Handler) SetSubscription(g subscription.Interface) {
+	d.subscription = g
+}
+
 func (d *Handler) PutMessageHandler(action messages.Action, i HandlerFunc) {
 	d.handlers[action] = i
 }
@@ -95,5 +105,5 @@ func (d *Handler) GetClientInterface() gate.Interface {
 }
 
 func (d *Handler) GetGroupInterface() subscription.Interface {
-	return d.group
+	return d.subscription
 }
