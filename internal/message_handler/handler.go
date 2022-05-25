@@ -1,7 +1,7 @@
 package message_handler
 
 import (
-	"github.com/glide-im/glide/pkg/client"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/messaging"
@@ -26,11 +26,11 @@ func NewHandler(defaultImpl *messaging.Handler) (*MessageHandler, error) {
 	return ret, nil
 }
 
-func (d *MessageHandler) Handle(cInfo *client.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandler) Handle(cInfo *gate.Info, msg *messages.GlideMessage) error {
 	return d.def.Handle(cInfo, msg)
 }
 
-func (d *MessageHandler) PutMessageHandler(action messages.Action, i client.MessageHandler) {
+func (d *MessageHandler) PutMessageHandler(action messages.Action, i messaging.HandlerFunc) {
 	d.def.PutMessageHandler(action, i)
 }
 
@@ -42,13 +42,13 @@ func (d *MessageHandler) dispatchRecallMessage(gid int64, msg *messages.ChatMess
 	return d.def.GetGroupInterface().DispatchMessage(gid, messages.ActionGroupMessageRecall, msg)
 }
 
-func (d *MessageHandler) enqueueMessage(id client.ID, message *messages.GlideMessage) {
+func (d *MessageHandler) enqueueMessage(id gate.ID, message *messages.GlideMessage) {
 	err := d.def.GetClientInterface().EnqueueMessage(id, message)
 	if err != nil {
 		logger.E("%v", err)
 	}
 }
-func (d *MessageHandler) unwrap(c *client.Info, msg *messages.GlideMessage, to interface{}) bool {
+func (d *MessageHandler) unwrap(c *gate.Info, msg *messages.GlideMessage, to interface{}) bool {
 	err := msg.DeserializeData(to)
 	if err != nil {
 		logger.E("sender chat senderMsg %v", err)

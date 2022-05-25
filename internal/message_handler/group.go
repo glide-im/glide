@@ -1,13 +1,13 @@
 package message_handler
 
 import (
-	"github.com/glide-im/glide/pkg/client"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 )
 
 // handleGroupMsg 分发群消息
-func (d *MessageHandler) handleGroupMsg(c *client.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage) error {
 
 	groupMsg := new(messages.ChatMessage)
 	if !d.unwrap(c, msg, groupMsg) {
@@ -30,11 +30,11 @@ func (d *MessageHandler) handleGroupMsg(c *client.Info, msg *messages.GlideMessa
 	return nil
 }
 
-func (d *MessageHandler) handleGroupRecallMsg(c *client.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandler) handleGroupRecallMsg(c *gate.Info, msg *messages.GlideMessage) error {
 	return d.handleGroupMsg(c, msg)
 }
 
-func (d *MessageHandler) handleAckGroupMsgRequest(c *client.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandler) handleAckGroupMsgRequest(c *gate.Info, msg *messages.GlideMessage) error {
 	ack := new(messages.AckGroupMessage)
 	if !d.unwrap(c, msg, ack) {
 		return nil

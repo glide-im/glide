@@ -2,25 +2,53 @@ package im_server
 
 import (
 	"errors"
-	"github.com/glide-im/glide/pkg/client"
 	"github.com/glide-im/glide/pkg/conn"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/panjf2000/ants/v2"
 	"strconv"
 	"sync"
-	"sync/atomic"
-	"time"
 )
 
 var ErrClientClosed = errors.New("client closed")
 var ErrClientNotExist = errors.New("client does not exist")
 
-var pool *ants.Pool
+type Server interface {
+	Run(func(c conn.Connection)) error
+}
 
-func init() {
+type GatewayServer struct {
+
+	// clients is a map of all connected clients
+	clients *clients
+
+	// msgHandler client message handler
+	msgHandler gate.MessageHandler
+
+	// pool of ants, used to process messages concurrently.
+	pool *ants.Pool
+
+	server conn.Server
+
+	addr string
+	port int
+}
+
+func NewServer(addr string, port int) (*GatewayServer, error) {
+	ret := new(GatewayServer)
+	ret.clients = newClients()
+	ret.addr = addr
+	ret.port = port
+
+	options := &conn.WsServerOptions{
+		ReadTimeout:  0,
+		WriteTimeout: 0,
+	}
+	ret.server = conn.NewWsServer(options)
+
 	var err error
-	pool, err = ants.NewPool(50_0000,
+	ret.pool, err = ants.NewPool(50_0000,
 		ants.WithNonblocking(true),
 		ants.WithPanicHandler(func(i interface{}) {
 			logger.E("%v", i)
@@ -28,46 +56,42 @@ func init() {
 		ants.WithPreAlloc(false),
 	)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+	return ret, nil
 }
 
-type DefaultClientManager struct {
-	clients      *clients
-	clientOnline int64
-	messageSent  int64
-	maxOnline    int64
-	startAt      int64
+func (c *GatewayServer) Run() error {
+	c.server.SetConnHandler(func(conn conn.Connection) {
+		c.HandleConnection(conn)
+	})
+	return c.server.Run(c.addr, c.port)
 }
 
-func NewDefaultManager() *DefaultClientManager {
-	ret := new(DefaultClientManager)
-	ret.clients = newClients()
-	ret.startAt = time.Now().Unix()
-	return ret
+func (c *GatewayServer) SetMessageHandler(h gate.MessageHandler) {
+	c.msgHandler = h
 }
 
-// ClientConnected 当一个用户连接建立后, 由该方法创建 Client 实例 Client 并管理该连接, 返回该由连接创建客户端的标识 id
+// HandleConnection 当一个用户连接建立后, 由该方法创建 Client 实例 Client 并管理该连接, 返回该由连接创建客户端的标识 id
 // 返回的标识 id 是一个临时 id, 后续连接认证后会改变
-func (c *DefaultClientManager) ClientConnected(conn conn.Connection) int64 {
+func (c *GatewayServer) HandleConnection(conn conn.Connection) gate.ID {
 
 	// 获取一个临时 uid 标识这个连接
-	connUid := int64(0)
-	ret := NewClient(conn, c, nil)
-	ret.SetID("")
-	c.clients.add(connUid, 0, ret)
+	id := gate.NewID("", "0", "0")
+	ret := NewClient(conn, c, c.msgHandler)
+	ret.SetID(id)
+	c.clients.add(id.UID(), 0, ret)
 
 	// 开始处理连接的消息
 	ret.Run()
-	return connUid
+	return id
 }
 
-func (c *DefaultClientManager) AddClient(id client.ID, cs client.Client) {
+func (c *GatewayServer) AddClient(id gate.ID, cs gate.Client) {
 	c.clients.add(id.UID(), 0, cs)
-	atomic.AddInt64(&c.clientOnline, 1)
 }
 
-func (c *DefaultClientManager) SigIn(old, new_ client.ID) error {
+func (c *GatewayServer) SetClientID(old, new_ gate.ID) error {
 
 	device := new_.Device()
 
@@ -97,16 +121,10 @@ func (c *DefaultClientManager) SigIn(old, new_ client.ID) error {
 	cli.SetID(new_)
 	// 删除临时 id
 	c.clients.delete(old.UID(), 0)
-
-	max := atomic.LoadInt64(&c.maxOnline)
-	current := atomic.AddInt64(&c.clientOnline, 1)
-	if max < current {
-		atomic.StoreInt64(&c.maxOnline, current)
-	}
 	return nil
 }
 
-func (c *DefaultClientManager) Logout(id client.ID) error {
+func (c *GatewayServer) ExitClient(id gate.ID) error {
 	cl := c.clients.get(id.UID())
 	if cl == nil || cl.size() == 0 {
 		return ErrClientNotExist
@@ -118,13 +136,11 @@ func (c *DefaultClientManager) Logout(id client.ID) error {
 
 	logDevice.Exit()
 	cl.remove(id.Device())
-	atomic.AddInt64(&c.clientOnline, -1)
 	return nil
 }
 
 // EnqueueMessage to the client with the specified uid and device, device: pass 0 express all device.
-func (c *DefaultClientManager) EnqueueMessage(id client.ID, msg *messages.GlideMessage) error {
-	atomic.AddInt64(&c.messageSent, 1)
+func (c *GatewayServer) EnqueueMessage(id gate.ID, msg *messages.GlideMessage) error {
 
 	var err error = nil
 	ds := c.clients.get(id.UID())
@@ -138,7 +154,7 @@ func (c *DefaultClientManager) EnqueueMessage(id client.ID, msg *messages.GlideM
 		}
 		return c.enqueueMessage(d, msg)
 	}
-	ds.foreach(func(deviceId int64, cli client.Client) {
+	ds.foreach(func(deviceId int64, cli gate.Client) {
 		if id.Device() != 0 && deviceId != id.Device() {
 			return
 		}
@@ -147,11 +163,11 @@ func (c *DefaultClientManager) EnqueueMessage(id client.ID, msg *messages.GlideM
 	return err
 }
 
-func (c *DefaultClientManager) enqueueMessage(cli client.Client, msg *messages.GlideMessage) error {
+func (c *GatewayServer) enqueueMessage(cli gate.Client, msg *messages.GlideMessage) error {
 	if !cli.IsRunning() {
 		return ErrClientClosed
 	}
-	err := pool.Submit(func() {
+	err := c.pool.Submit(func() {
 		_ = cli.EnqueueMessage(msg)
 	})
 	if err != nil {
@@ -161,7 +177,7 @@ func (c *DefaultClientManager) enqueueMessage(cli client.Client, msg *messages.G
 	return nil
 }
 
-func (c *DefaultClientManager) IsOnline(id client.ID) bool {
+func (c *GatewayServer) IsOnline(id gate.ID) bool {
 	ds := c.clients.get(id.UID())
 	if ds == nil {
 		return false
@@ -169,7 +185,7 @@ func (c *DefaultClientManager) IsOnline(id client.ID) bool {
 	return ds.size() > 0
 }
 
-func (c *DefaultClientManager) isDeviceOnline(uid, device int64) bool {
+func (c *GatewayServer) isDeviceOnline(uid, device int64) bool {
 	ds := c.clients.get(uid)
 	if ds == nil {
 		return false
@@ -177,9 +193,9 @@ func (c *DefaultClientManager) isDeviceOnline(uid, device int64) bool {
 	return ds.get(device) != nil
 }
 
-func (c *DefaultClientManager) getClient(count int) []client.Info {
+func (c *GatewayServer) getClient(count int) []gate.Info {
 	//goland:noinspection GoPreferNilSlice
-	ret := []client.Info{}
+	ret := []gate.Info{}
 	ct := 0
 	c.clients.m.RLock()
 	for _, ds := range c.clients.clients {
@@ -199,26 +215,17 @@ func (c *DefaultClientManager) getClient(count int) []client.Info {
 	return ret
 }
 
-func (c *DefaultClientManager) GetManagerInfo() client.ServerInfo {
-	return client.ServerInfo{
-		Online:      atomic.LoadInt64(&c.clientOnline),
-		MaxOnline:   atomic.LoadInt64(&c.maxOnline),
-		MessageSent: atomic.LoadInt64(&c.messageSent),
-		StartAt:     c.startAt,
-	}
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 type devices struct {
-	ds map[int64]client.Client
+	ds map[int64]gate.Client
 }
 
-func (d *devices) put(device int64, cli client.Client) {
+func (d *devices) put(device int64, cli gate.Client) {
 	d.ds[device] = cli
 }
 
-func (d *devices) get(device int64) client.Client {
+func (d *devices) get(device int64) gate.Client {
 	return d.ds[device]
 }
 
@@ -226,7 +233,7 @@ func (d *devices) remove(device int64) {
 	delete(d.ds, device)
 }
 
-func (d *devices) foreach(f func(device int64, c client.Client)) {
+func (d *devices) foreach(f func(device int64, c gate.Client)) {
 	for k, v := range d.ds {
 		f(k, v)
 	}
@@ -270,14 +277,14 @@ func (g *clients) contains(uid int64) bool {
 	return ok
 }
 
-func (g *clients) add(uid int64, device int64, c client.Client) {
+func (g *clients) add(uid int64, device int64, c gate.Client) {
 	g.m.Lock()
 	defer g.m.Unlock()
 	cs, ok := g.clients[uid]
 	if ok {
 		cs.put(device, c)
 	} else {
-		d := &devices{map[int64]client.Client{}}
+		d := &devices{map[int64]gate.Client{}}
 		d.put(device, c)
 		g.clients[uid] = d
 	}

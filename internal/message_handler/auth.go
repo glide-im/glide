@@ -2,11 +2,11 @@ package message_handler
 
 import (
 	"github.com/glide-im/glide/pkg/auth"
-	"github.com/glide-im/glide/pkg/client"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 )
 
-func (d *MessageHandler) handleAuth(c *client.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) error {
 
 	t := auth.Token{}
 	e := msg.DeserializeData(&t)
@@ -19,8 +19,8 @@ func (d *MessageHandler) handleAuth(c *client.Info, msg *messages.GlideMessage) 
 
 	if err != nil {
 		resp := messages.NewMessage(0, messages.ActionApiSuccess, result)
-		id := client.NewID("", "", "")
-		_ = d.def.GetClientInterface().SigIn(c.ID, id)
+		id := gate.NewID("", "", "")
+		_ = d.def.GetClientInterface().SetClientID(c.ID, id)
 		d.enqueueMessage(c.ID, resp)
 	} else {
 		resp := messages.NewMessage(0, messages.ActionApiFailed, err.Error())

@@ -3,7 +3,7 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"github.com/glide-im/glide/pkg/client"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"time"
 )
@@ -22,7 +22,7 @@ func ParseToken(token string) (*AuthInfo, error) {
 	return parseJwt(token)
 }
 
-func Auth(c *client.Info, t *Token) (*Result, error) {
+func Auth(c *gate.Info, t *Token) (*Result, error) {
 
 	token, err := parseJwt(t.Token)
 	if err != nil {

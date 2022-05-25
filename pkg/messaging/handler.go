@@ -2,13 +2,15 @@ package messaging
 
 import (
 	"errors"
-	"github.com/glide-im/glide/pkg/client"
-	"github.com/glide-im/glide/pkg/group"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/message_store"
 	"github.com/glide-im/glide/pkg/messages"
+	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/panjf2000/ants/v2"
 )
+
+type HandlerFunc func(cliInfo *gate.Info, message *messages.GlideMessage) error
 
 // Handler default implementation of the messaging interface.
 type Handler struct {
@@ -20,13 +22,13 @@ type Handler struct {
 	store message_store.MessageStore
 
 	// handlers message handler function map for message action
-	handlers map[messages.Action]client.MessageHandler
+	handlers map[messages.Action]HandlerFunc
 
-	group  group.Interface
-	client client.Interface
+	group subscription.Interface
+	gate  gate.Interface
 }
 
-func NewDefaultImpl(store message_store.MessageStore) (Interface, error) {
+func NewDefaultImpl(store message_store.MessageStore, group subscription.Interface, gate gate.Interface) (Interface, error) {
 
 	if store == nil {
 		return nil, errors.New("store is nil")
@@ -34,7 +36,9 @@ func NewDefaultImpl(store message_store.MessageStore) (Interface, error) {
 
 	ret := Handler{
 		store:    store,
-		handlers: map[messages.Action]client.MessageHandler{},
+		handlers: map[messages.Action]HandlerFunc{},
+		group:    group,
+		gate:     gate,
 	}
 
 	var err error
@@ -51,7 +55,7 @@ func NewDefaultImpl(store message_store.MessageStore) (Interface, error) {
 	return &ret, nil
 }
 
-func (d *Handler) Handle(cInfo *client.Info, msg *messages.GlideMessage) error {
+func (d *Handler) Handle(cInfo *gate.Info, msg *messages.GlideMessage) error {
 
 	if cInfo.ID == "" {
 		return errors.New("unauthorized")
@@ -66,7 +70,7 @@ func (d *Handler) Handle(cInfo *client.Info, msg *messages.GlideMessage) error {
 				logger.E("message impl error: %v", err)
 			}
 		} else {
-			_ = d.client.EnqueueMessage(cInfo.ID, messages.NewMessage(-1, messages.ActionNotifyError, "unknown action"))
+			_ = d.gate.EnqueueMessage(cInfo.ID, messages.NewMessage(-1, messages.ActionNotifyError, "unknown action"))
 		}
 	})
 	if err != nil {
@@ -76,20 +80,20 @@ func (d *Handler) Handle(cInfo *client.Info, msg *messages.GlideMessage) error {
 		if err == ants.ErrPoolClosed {
 			return errors.New("message handle goroutine pool is closed")
 		}
-		_ = d.client.EnqueueMessage(cInfo.ID, messages.NewMessage(-1, messages.ActionNotifyError, "internal server error"))
+		_ = d.gate.EnqueueMessage(cInfo.ID, messages.NewMessage(-1, messages.ActionNotifyError, "internal server error"))
 		return errors.New("message handle goroutine pool submit error")
 	}
 	return nil
 }
 
-func (d *Handler) PutMessageHandler(action messages.Action, i client.MessageHandler) {
+func (d *Handler) PutMessageHandler(action messages.Action, i HandlerFunc) {
 	d.handlers[action] = i
 }
 
-func (d *Handler) GetClientInterface() client.Interface {
-	return d.client
+func (d *Handler) GetClientInterface() gate.Interface {
+	return d.gate
 }
 
-func (d *Handler) GetGroupInterface() group.Interface {
+func (d *Handler) GetGroupInterface() subscription.Interface {
 	return d.group
 }

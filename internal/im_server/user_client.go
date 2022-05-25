@@ -1,8 +1,8 @@
 package im_server
 
 import (
-	"github.com/glide-im/glide/pkg/client"
 	"github.com/glide-im/glide/pkg/conn"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/timingwheel"
@@ -46,17 +46,17 @@ type Client struct {
 
 	hbW *timingwheel.Task
 
-	info *client.Info
+	info *gate.Info
 
 	// seq 服务器下行消息递增序列号
 	seq int64
 
-	mgr client.Interface
+	mgr gate.Interface
 
-	msgHandler client.MessageHandler
+	msgHandler gate.MessageHandler
 }
 
-func NewClient(conn conn.Connection, mgr client.Interface, handler client.MessageHandler) *Client {
+func NewClient(conn conn.Connection, mgr gate.Interface, handler gate.MessageHandler) *Client {
 	ret := new(Client)
 	ret.conn = conn
 	ret.state = stateRunning
@@ -67,7 +67,7 @@ func NewClient(conn conn.Connection, mgr client.Interface, handler client.Messag
 	ret.seq = 0
 	ret.hbR = tw.After(heartbeatDuration)
 	ret.hbW = tw.After(heartbeatDuration)
-	ret.info = &client.Info{
+	ret.info = &gate.Info{
 		ConnectionAt: time.Now().Unix(),
 		CliAddr:      conn.GetConnInfo().Addr,
 	}
@@ -76,12 +76,12 @@ func NewClient(conn conn.Connection, mgr client.Interface, handler client.Messag
 	return ret
 }
 
-func (c *Client) GetInfo() client.Info {
+func (c *Client) GetInfo() gate.Info {
 	return *c.info
 }
 
 // SetID 设置 id 标识及设备标识
-func (c *Client) SetID(id client.ID) {
+func (c *Client) SetID(id gate.ID) {
 
 	if id == "" {
 		c.logged = false
@@ -166,7 +166,7 @@ func (c *Client) readMessage() {
 			c.hbR = tw.After(heartbeatDuration)
 
 			// 统一处理消息函数
-			_ = c.msgHandler(c.info, msg.m)
+			c.msgHandler(c.info, msg.m)
 			msg.Recycle()
 		}
 	}
@@ -229,7 +229,7 @@ func (c *Client) handleError(err error) bool {
 		logger.E("handle message error: %s", err.Error())
 	}
 	if c.logged {
-		err = c.mgr.Logout(c.info.ID)
+		err = c.mgr.ExitClient(c.info.ID)
 		if err != nil {
 			logger.E("%v", err)
 		}
@@ -251,7 +251,7 @@ func (c *Client) Exit() {
 		c.rCloseCh <- struct{}{}
 	}
 
-	_ = c.mgr.Logout(c.info.ID)
+	_ = c.mgr.ExitClient(c.info.ID)
 }
 
 // getNextSeq 获取下一个下行消息序列号 sequence

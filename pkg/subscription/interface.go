@@ -1,7 +1,7 @@
-package group
+package subscription
 
 import (
-	"github.com/glide-im/glide/pkg/client"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 )
 
@@ -20,7 +20,7 @@ const (
 	FlagGroupCancelMute       = 4
 )
 
-type MessageHandler func(c client.ID, message *messages.GlideMessage) error
+type MessageHandler func(c gate.ID, message *messages.GlideMessage) error
 
 type MemberUpdate struct {
 	Uid  int64
@@ -47,6 +47,14 @@ type Interface interface {
 
 	// DispatchMessage 发送聊天消息
 	DispatchMessage(gid int64, action messages.Action, message *messages.ChatMessage) error
+}
+
+type Server interface {
+	Interface
+
+	SetGate(gate gate.Interface)
+
+	Run() error
 }
 
 // manager 群相关操作入口
