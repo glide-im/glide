@@ -1,4 +1,4 @@
-package subscribe
+package subscription
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/store"
-	"github.com/glide-im/glide/pkg/subscribe"
+	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/glide-im/glide/pkg/timingwheel"
 	"github.com/panjf2000/ants/v2"
 	"strconv"
@@ -237,7 +237,7 @@ func (g *Group) SendMessage(from int64, message *messages.GlideMessage) {
 	g.mu.Unlock()
 }
 
-func (g *Group) updateMember(u subscribe.SubscriberUpdate) error {
+func (g *Group) updateMember(u subscription.SubscriberUpdate) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 

@@ -6,7 +6,7 @@ import (
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/store"
-	"github.com/glide-im/glide/pkg/subscribe"
+	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/panjf2000/ants/v2"
 )
 
@@ -24,7 +24,7 @@ type Handler struct {
 	// handlers message handler function map for message action
 	handlers map[messages.Action]HandlerFunc
 
-	subscription subscribe.Interface
+	subscription subscription.Interface
 	gate         gate.Manager
 }
 
@@ -92,7 +92,7 @@ func (d *Handler) SetGate(g gate.Manager) {
 	d.gate = g
 }
 
-func (d *Handler) SetSubscription(g subscribe.Interface) {
+func (d *Handler) SetSubscription(g subscription.Interface) {
 	d.subscription = g
 }
 
@@ -104,6 +104,6 @@ func (d *Handler) GetClientInterface() gate.Manager {
 	return d.gate
 }
 
-func (d *Handler) GetGroupInterface() subscribe.Interface {
+func (d *Handler) GetGroupInterface() subscription.Interface {
 	return d.subscription
 }

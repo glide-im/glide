@@ -1,4 +1,4 @@
-package subscribe
+package subscription
 
 import (
 	"github.com/glide-im/glide/pkg/gate"

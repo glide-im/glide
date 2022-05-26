@@ -3,7 +3,7 @@ package messaging
 import (
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
-	"github.com/glide-im/glide/pkg/subscribe"
+	"github.com/glide-im/glide/pkg/subscription"
 )
 
 // Interface for messaging.
@@ -23,7 +23,7 @@ type Server interface {
 
 	SetGate(g gate.Manager)
 
-	SetSubscription(g subscribe.Interface)
+	SetSubscription(g subscription.Interface)
 
 	Run() error
 }
