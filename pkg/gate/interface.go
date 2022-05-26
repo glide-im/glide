@@ -9,9 +9,14 @@ import (
 var ErrClientNotExist = errors.New("client not exist")
 var ErrInvalidID = errors.New("invalid id")
 
-// Interface is the basic and common interface for all gate implementations.
-//As the basic gate, it is used to provide a common gate interface for other modules to interact with the gate.
 type Interface interface {
+	// EnqueueMessage enqueues the message to the client with the given id.
+	EnqueueMessage(id ID, message *messages.GlideMessage) error
+}
+
+// Manager is the basic and common interface for all gate implementations.
+//As the basic gate, it is used to provide a common gate interface for other modules to interact with the gate.
+type Manager interface {
 
 	// SetClientID sets the client id with the new id.
 	SetClientID(old ID, new_ ID) error
@@ -22,13 +27,12 @@ type Interface interface {
 	// IsOnline returns true if the client is online.
 	IsOnline(id ID) bool
 
-	// EnqueueMessage enqueues the message to the client with the given id.
-	EnqueueMessage(id ID, message *messages.GlideMessage) error
+	Interface
 }
 
 // Server is the interface for the gateway server, which is used to handle and manager client connections.
 type Server interface {
-	Interface
+	Manager
 
 	// SetMessageHandler sets the client message handler.
 	SetMessageHandler(h MessageHandler)
@@ -39,6 +43,5 @@ type Server interface {
 	Run() error
 }
 
-// MessageHandler used to handle messages from the client,
-//all messages are handled by the message handler.
+// MessageHandler used to handle messages from the gate.
 type MessageHandler func(cliInfo *Info, message *messages.GlideMessage)

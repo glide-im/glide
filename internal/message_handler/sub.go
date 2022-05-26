@@ -16,11 +16,9 @@ func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage
 	groupMsg.From = c.ID.UID()
 
 	var err error
-	if msg.GetAction() == messages.ActionGroupMessageRecall {
-		err = d.dispatchRecallMessage(groupMsg.To, groupMsg)
-	} else {
-		err = d.dispatchGroupMessage(groupMsg.To, groupMsg)
-	}
+
+	err = d.def.GetGroupInterface().PublishMessage("", groupMsg)
+
 	if err != nil {
 		logger.E("dispatch group message error: %v", err)
 		notify := messages.NewMessage(0, messages.ActionMessageFailed, messages.NewAckNotify(groupMsg.Mid))

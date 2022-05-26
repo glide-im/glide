@@ -1,8 +1,7 @@
-package subscription
+package subscribe
 
 import (
 	"github.com/glide-im/glide/pkg/gate"
-	"github.com/glide-im/glide/pkg/messages"
 )
 
 const (
@@ -36,19 +35,19 @@ type ChannelUpdate struct {
 }
 
 type Interface interface {
+	PublishMessage(id ChanID, message Message) error
+}
+
+type Subscribe interface {
+	SetGateInterface(gate gate.Interface)
+
 	UpdateSubscriber(id ChanID, updates []SubscriberUpdate) error
 
 	UpdateChannel(id ChanID, update ChannelUpdate) error
-
-	DispatchNotifyMessage(id ChanID, message *messages.GroupNotify) error
-
-	PublishMessage(id ChanID, action messages.Action, message *messages.ChatMessage) error
 }
 
 type Server interface {
-	Interface
-
-	SetGate(gate gate.Interface)
+	Subscribe
 
 	Run() error
 }

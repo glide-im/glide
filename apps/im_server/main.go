@@ -4,7 +4,7 @@ import (
 	"github.com/glide-im/glide/internal/im_server"
 	"github.com/glide-im/glide/internal/message_handler"
 	"github.com/glide-im/glide/internal/message_store_db"
-	"github.com/glide-im/glide/internal/subscription"
+	"github.com/glide-im/glide/internal/subscribe"
 	"github.com/glide-im/glide/pkg/bootstrap"
 )
 
@@ -23,7 +23,7 @@ func main() {
 	options := bootstrap.Options{
 		Messaging:    handler,
 		Gate:         gateway,
-		Subscription: subscription.NewSubscription(),
+		Subscription: subscribe.NewSubscription(),
 	}
 
 	err = bootstrap.Bootstrap(&options)

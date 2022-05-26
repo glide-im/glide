@@ -4,9 +4,9 @@ import (
 	"errors"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
-	"github.com/glide-im/glide/pkg/message_store"
 	"github.com/glide-im/glide/pkg/messages"
-	"github.com/glide-im/glide/pkg/subscription"
+	"github.com/glide-im/glide/pkg/store"
+	"github.com/glide-im/glide/pkg/subscribe"
 	"github.com/panjf2000/ants/v2"
 )
 
@@ -19,16 +19,16 @@ type Handler struct {
 	execPool *ants.Pool
 
 	// store express message store interface
-	store message_store.MessageStore
+	store store.MessageStore
 
 	// handlers message handler function map for message action
 	handlers map[messages.Action]HandlerFunc
 
-	subscription subscription.Interface
-	gate         gate.Interface
+	subscription subscribe.Interface
+	gate         gate.Manager
 }
 
-func NewDefaultImpl(store message_store.MessageStore) (*Handler, error) {
+func NewDefaultImpl(store store.MessageStore) (*Handler, error) {
 
 	if store == nil {
 		return nil, errors.New("store is nil")
@@ -88,11 +88,11 @@ func (d *Handler) Run() error {
 	return errors.New("not implemented")
 }
 
-func (d *Handler) SetGate(g gate.Interface) {
+func (d *Handler) SetGate(g gate.Manager) {
 	d.gate = g
 }
 
-func (d *Handler) SetSubscription(g subscription.Interface) {
+func (d *Handler) SetSubscription(g subscribe.Interface) {
 	d.subscription = g
 }
 
@@ -100,10 +100,10 @@ func (d *Handler) PutMessageHandler(action messages.Action, i HandlerFunc) {
 	d.handlers[action] = i
 }
 
-func (d *Handler) GetClientInterface() gate.Interface {
+func (d *Handler) GetClientInterface() gate.Manager {
 	return d.gate
 }
 
-func (d *Handler) GetGroupInterface() subscription.Interface {
+func (d *Handler) GetGroupInterface() subscribe.Interface {
 	return d.subscription
 }

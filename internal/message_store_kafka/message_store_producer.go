@@ -8,12 +8,7 @@ import (
 type MessageStore struct {
 }
 
-func (D *MessageStore) StoreChatMessage(from gate.ID, message *messages.ChatMessage) error {
-
-	return nil
-}
-
-func (D *MessageStore) StoreChatMessageRecalled(mid int64, recallBy int64) error {
+func (D *MessageStore) StoreMessage(from gate.ID, message *messages.ChatMessage) error {
 
 	return nil
 }

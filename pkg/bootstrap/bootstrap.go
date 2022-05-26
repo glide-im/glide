@@ -5,13 +5,13 @@ import (
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/messaging"
-	"github.com/glide-im/glide/pkg/subscription"
+	"github.com/glide-im/glide/pkg/subscribe"
 )
 
 type Options struct {
 	Messaging    messaging.Interface
 	Gate         gate.Interface
-	Subscription subscription.Interface
+	Subscription subscribe.Interface
 }
 
 func Bootstrap(opts *Options) error {
@@ -24,7 +24,7 @@ func Bootstrap(opts *Options) error {
 	if ok {
 		return bootMessagingServer(opts)
 	}
-	_, ok = opts.Subscription.(subscription.Server)
+	_, ok = opts.Subscription.(subscribe.Server)
 	if ok {
 		return bootSubscriptionServer(opts)
 	}
@@ -33,11 +33,11 @@ func Bootstrap(opts *Options) error {
 }
 
 func bootSubscriptionServer(opts *Options) error {
-	server, ok := opts.Subscription.(subscription.Server)
+	server, ok := opts.Subscription.(subscribe.Server)
 	if !ok {
 		return errors.New("subscription server not implemented")
 	}
-	server.SetGate(opts.Gate)
+	server.SetGateInterface(opts.Gate)
 	return server.Run()
 }
 
@@ -46,7 +46,11 @@ func bootMessagingServer(opts *Options) error {
 	if !ok {
 		return errors.New("messaging does not implement Messaging.impl")
 	}
-	server.SetGate(opts.Gate)
+
+	manager, ok := opts.Gate.(gate.Manager)
+	if ok {
+		server.SetGate(manager)
+	}
 	server.SetSubscription(opts.Subscription)
 	return server.Run()
 }

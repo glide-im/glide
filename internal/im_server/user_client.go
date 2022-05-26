@@ -51,12 +51,12 @@ type Client struct {
 	// seq 服务器下行消息递增序列号
 	seq int64
 
-	mgr gate.Interface
+	mgr gate.Manager
 
 	msgHandler gate.MessageHandler
 }
 
-func NewClient(conn conn.Connection, mgr gate.Interface, handler gate.MessageHandler) *Client {
+func NewClient(conn conn.Connection, mgr gate.Manager, handler gate.MessageHandler) *Client {
 	ret := new(Client)
 	ret.conn = conn
 	ret.state = stateRunning
@@ -112,7 +112,7 @@ func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
 		logger.D("client has closed, enqueue msg failed")
 		return ErrClientClosed
 	}
-	logger.I("EnqueueMessage(id=%v, %s): %v", c.info.ID, msg.GetAction(), msg)
+	logger.I("Interface(id=%v, %s): %v", c.info.ID, msg.GetAction(), msg)
 	if msg.GetSeq() < 0 {
 		// 服务端主动发送的消息使用服务端的序列号
 		msg.SetSeq(c.getNextSeq())

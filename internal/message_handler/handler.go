@@ -3,17 +3,17 @@ package message_handler
 import (
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
-	"github.com/glide-im/glide/pkg/message_store"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/messaging"
+	"github.com/glide-im/glide/pkg/store"
 )
 
 type MessageHandler struct {
 	def   *messaging.Handler
-	store message_store.MessageStore
+	store store.MessageStore
 }
 
-func NewHandler(store message_store.MessageStore) (*MessageHandler, error) {
+func NewHandler(store store.MessageStore) (*MessageHandler, error) {
 
 	impl, err := messaging.NewDefaultImpl(store)
 	if err != nil {
@@ -44,11 +44,7 @@ func (d *MessageHandler) PutMessageHandler(action messages.Action, i messaging.H
 }
 
 func (d *MessageHandler) dispatchGroupMessage(gid int64, msg *messages.ChatMessage) error {
-	return d.def.GetGroupInterface().PublishMessage("", messages.ActionChatMessage, msg)
-}
-
-func (d *MessageHandler) dispatchRecallMessage(gid int64, msg *messages.ChatMessage) error {
-	return d.def.GetGroupInterface().PublishMessage("", messages.ActionGroupMessageRecall, msg)
+	return d.def.GetGroupInterface().PublishMessage("", nil)
 }
 
 func (d *MessageHandler) enqueueMessage(id gate.ID, message *messages.GlideMessage) {

@@ -23,7 +23,6 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 			if err != nil || r.RecallBy != from {
 				return err
 			}
-			err = d.store.StoreChatMessageRecalled(r.Mid, r.RecallBy)
 
 			//err = msgdao.ChatMsgDaoImpl.UpdateChatMessageStatus(r.Mid, r.RecallBy, msg.To, msgdao.ChatMessageStatusRecalled)
 			if err != nil {
@@ -51,7 +50,7 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 			//_, err := msgdao.AddChatMessage(&dbMsg)
 
 			// 保存消息
-			err := d.store.StoreChatMessage(c.ID, msg)
+			err := d.store.StoreMessage(c.ID, msg)
 			if err != nil {
 				logger.E("save chat message error %v", err)
 				return err
