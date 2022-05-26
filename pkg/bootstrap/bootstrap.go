@@ -47,7 +47,7 @@ func bootMessagingServer(opts *Options) error {
 		return errors.New("messaging does not implement Messaging.impl")
 	}
 
-	manager, ok := opts.Gate.(gate.Manager)
+	manager, ok := opts.Gate.(gate.Gateway)
 	if ok {
 		server.SetGate(manager)
 	}

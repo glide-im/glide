@@ -25,7 +25,7 @@ type Handler struct {
 	handlers map[messages.Action]HandlerFunc
 
 	subscription subscription.Interface
-	gate         gate.Manager
+	gate         gate.Gateway
 }
 
 func NewDefaultImpl(store store.MessageStore) (*Handler, error) {
@@ -88,7 +88,7 @@ func (d *Handler) Run() error {
 	return errors.New("not implemented")
 }
 
-func (d *Handler) SetGate(g gate.Manager) {
+func (d *Handler) SetGate(g gate.Gateway) {
 	d.gate = g
 }
 
@@ -100,7 +100,7 @@ func (d *Handler) PutMessageHandler(action messages.Action, i HandlerFunc) {
 	d.handlers[action] = i
 }
 
-func (d *Handler) GetClientInterface() gate.Manager {
+func (d *Handler) GetClientInterface() gate.Gateway {
 	return d.gate
 }
 

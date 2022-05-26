@@ -21,7 +21,7 @@ type Interface interface {
 type Server interface {
 	Interface
 
-	SetGate(g gate.Manager)
+	SetGate(g gate.Gateway)
 
 	SetSubscription(g subscription.Interface)
 

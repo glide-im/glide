@@ -1,6 +1,7 @@
 package message_handler
 
 import (
+	"github.com/glide-im/glide/pkg/auth"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
@@ -11,9 +12,11 @@ import (
 type MessageHandler struct {
 	def   *messaging.Handler
 	store store.MessageStore
+
+	auth auth.Interface
 }
 
-func NewHandler(store store.MessageStore) (*MessageHandler, error) {
+func NewHandler(store store.MessageStore, auth auth.Interface) (*MessageHandler, error) {
 
 	impl, err := messaging.NewDefaultImpl(store)
 	if err != nil {
@@ -23,6 +26,7 @@ func NewHandler(store store.MessageStore) (*MessageHandler, error) {
 	ret := &MessageHandler{
 		def:   impl,
 		store: store,
+		auth:  auth,
 	}
 	ret.PutMessageHandler(messages.ActionChatMessage, ret.handleChatMessage)
 	ret.PutMessageHandler(messages.ActionGroupMessage, ret.handleGroupMsg)
@@ -33,6 +37,10 @@ func NewHandler(store store.MessageStore) (*MessageHandler, error) {
 	ret.PutMessageHandler(messages.ActionAckGroupMsg, ret.handleAckGroupMsgRequest)
 	ret.PutMessageHandler(messages.ActionApiAuth, ret.handleAuth)
 	return ret, nil
+}
+
+func (d *MessageHandler) SetAuthorize(a auth.Interface) {
+	d.auth = a
 }
 
 func (d *MessageHandler) Handle(cInfo *gate.Info, msg *messages.GlideMessage) error {

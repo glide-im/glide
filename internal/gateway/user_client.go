@@ -1,4 +1,4 @@
-package im_server
+package gateway
 
 import (
 	"github.com/glide-im/glide/pkg/conn"
@@ -51,12 +51,12 @@ type Client struct {
 	// seq 服务器下行消息递增序列号
 	seq int64
 
-	mgr gate.Manager
+	mgr gate.Gateway
 
 	msgHandler gate.MessageHandler
 }
 
-func NewClient(conn conn.Connection, mgr gate.Manager, handler gate.MessageHandler) *Client {
+func NewClient(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandler) *Client {
 	ret := new(Client)
 	ret.conn = conn
 	ret.state = stateRunning

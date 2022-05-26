@@ -1,4 +1,4 @@
-package im_server
+package gateway
 
 import (
 	"github.com/glide-im/glide/pkg/conn"

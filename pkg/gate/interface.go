@@ -14,9 +14,9 @@ type Interface interface {
 	EnqueueMessage(id ID, message *messages.GlideMessage) error
 }
 
-// Manager is the basic and common interface for all gate implementations.
+// Gateway is the basic and common interface for all gate implementations.
 //As the basic gate, it is used to provide a common gate interface for other modules to interact with the gate.
-type Manager interface {
+type Gateway interface {
 
 	// SetClientID sets the client id with the new id.
 	SetClientID(old ID, new_ ID) error
@@ -32,7 +32,7 @@ type Manager interface {
 
 // Server is the interface for the gateway server, which is used to handle and manager client connections.
 type Server interface {
-	Manager
+	Gateway
 
 	// SetMessageHandler sets the client message handler.
 	SetMessageHandler(h MessageHandler)

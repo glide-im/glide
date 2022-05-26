@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/glide-im/glide/internal/authorize"
 	"github.com/glide-im/glide/internal/im_server"
 	"github.com/glide-im/glide/internal/message_handler"
 	"github.com/glide-im/glide/internal/message_store_db"
@@ -15,7 +16,7 @@ func main() {
 		panic(err)
 	}
 
-	handler, err := message_handler.NewHandler(message_store_db.New())
+	handler, err := message_handler.NewHandler(message_store_db.New(), authorize.NewAuthorizeImpl())
 	if err != nil {
 		panic(err)
 	}

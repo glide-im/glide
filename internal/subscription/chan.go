@@ -112,7 +112,7 @@ func (g *Group) EnqueueNotify(msg *messages.GroupNotify) error {
 	return g.checkMsgQueue()
 }
 
-func (g *Group) EnqueueMessage(msg *messages.ChatMessage, recall bool) (int64, error) {
+func (g *Group) EnqueueMessage(msg *messages.ChatMessage, n subscription.Message) (int64, error) {
 
 	g.mu.Lock()
 	mf, exist := g.members[msg.From]
@@ -121,14 +121,14 @@ func (g *Group) EnqueueMessage(msg *messages.ChatMessage, recall bool) (int64, e
 	if !exist {
 		return 0, errors.New("not a group member")
 	}
-	if mf.muted && !recall {
+	if mf.muted {
 		return 0, errors.New("a muted group member send message")
 	}
 
 	now := time.Now().Unix()
 	seq := atomic.AddInt64(&g.msgSequence, 1)
 
-	err := g.store.StoreMessage("", msg)
+	err := g.store.StoreMessage("", n)
 	if err != nil {
 		atomic.AddInt64(&g.msgSequence, -1)
 		return 0, err
