@@ -6,10 +6,17 @@ import (
 	"github.com/glide-im/glide/pkg/auth"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
+	"strconv"
 	"time"
 )
 
 type JwtAuthorize struct {
+}
+
+type Response struct {
+	Token  string
+	Uid    string
+	Server []string
 }
 
 func NewAuthorizeImpl(secret string) *JwtAuthorize {
@@ -37,9 +44,13 @@ func (a JwtAuthorize) Auth(c *gate.Info, t *auth.Token) (*auth.Result, error) {
 	}
 
 	return &auth.Result{
-		ID:      token.Uid,
-		Token:   t.Token,
-		Servers: nil,
+		ID:      gate.NewID("", token.Uid, strconv.FormatInt(token.Device, 10)),
+		Success: true,
+		Response: &Response{
+			Token:  t.Token,
+			Uid:    strconv.FormatInt(token.Uid, 10),
+			Server: nil,
+		},
 	}, nil
 }
 

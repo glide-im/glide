@@ -17,7 +17,7 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 	}
 	r, err := d.auth.Auth(c, &t)
 
-	if err == nil {
+	if err == nil && r.Success {
 		resp := messages.NewMessage(msg.Seq, messages.ActionApiSuccess, r.Response)
 		_ = d.def.GetClientInterface().SetClientID(c.ID, r.ID)
 		d.enqueueMessage(r.ID, resp)

@@ -4,10 +4,11 @@ import (
 	"github.com/glide-im/glide/internal/gateway"
 	"github.com/glide-im/glide/pkg/conn"
 	"github.com/glide-im/glide/pkg/gate"
+	"time"
 )
 
 type GatewayServer struct {
-	gateway.Impl
+	*gateway.Impl
 
 	server conn.Server
 	h      gate.MessageHandler
@@ -18,12 +19,13 @@ type GatewayServer struct {
 
 func NewServer(addr string, port int) (gate.Server, error) {
 	srv := GatewayServer{}
+	srv.Impl, _ = gateway.NewServer()
 	srv.addr = addr
 	srv.port = port
 
 	options := &conn.WsServerOptions{
-		ReadTimeout:  0,
-		WriteTimeout: 0,
+		ReadTimeout:  time.Minute * 3,
+		WriteTimeout: time.Minute * 3,
 	}
 	srv.server = conn.NewWsServer(options)
 	return &srv, nil

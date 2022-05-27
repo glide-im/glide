@@ -51,6 +51,10 @@ func (d *MessageHandler) PutMessageHandler(action messages.Action, i messaging.H
 	d.def.PutMessageHandler(action, i)
 }
 
+func (d *MessageHandler) SetGate(g gate.Gateway) {
+	d.def.SetGate(g)
+}
+
 func (d *MessageHandler) dispatchGroupMessage(gid int64, msg *messages.ChatMessage) error {
 	return d.def.GetGroupInterface().PublishMessage("", nil)
 }

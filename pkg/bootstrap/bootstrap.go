@@ -16,6 +16,11 @@ type Options struct {
 
 func Bootstrap(opts *Options) error {
 
+	err := setupDependence(opts)
+	if err != nil {
+		return err
+	}
+
 	_, ok := opts.Gate.(gate.Server)
 	if ok {
 		return bootGatewayServer(opts)
@@ -30,6 +35,25 @@ func Bootstrap(opts *Options) error {
 	}
 
 	return errors.New("no server found")
+}
+
+func setupDependence(opts *Options) error {
+	m, ok := opts.Messaging.(messaging.Messaging)
+	if ok {
+		g, ok := opts.Gate.(gate.Gateway)
+		if ok {
+			m.SetGate(g)
+		} else {
+			return errors.New("gateway not found")
+		}
+		m.SetSubscription(opts.Subscription)
+	}
+
+	sb, ok := opts.Subscription.(subscription.Subscribe)
+	if ok {
+		sb.SetGateInterface(opts.Gate)
+	}
+	return nil
 }
 
 func bootSubscriptionServer(opts *Options) error {

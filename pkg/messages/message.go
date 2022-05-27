@@ -9,8 +9,8 @@ type Data struct {
 	des interface{}
 }
 
-func NewData(d interface{}) Data {
-	return Data{
+func NewData(d interface{}) *Data {
+	return &Data{
 		des: d,
 	}
 }
@@ -53,7 +53,7 @@ type GlideMessage struct {
 	Ver    int64
 	Seq    int64
 	Action string
-	Data   Data
+	Data   *Data
 	Extra  map[string]string
 }
 

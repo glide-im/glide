@@ -17,11 +17,17 @@ type Interface interface {
 	PutMessageHandler(action messages.Action, i HandlerFunc)
 }
 
-// Server is the messaging server.
-type Server interface {
+type Messaging interface {
 	Interface
 
+	SetSubscription(g subscription.Interface)
+
 	SetGate(g gate.Gateway)
+}
+
+// Server is the messaging server.
+type Server interface {
+	Messaging
 
 	SetSubscription(g subscription.Interface)
 

@@ -10,6 +10,7 @@ type Token struct {
 
 type Result struct {
 	ID       gate.ID
+	Success  bool
 	Response interface{}
 }
 
