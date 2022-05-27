@@ -21,8 +21,8 @@ func NewID2(uid interface{}) ID {
 }
 
 // NewID creates a new ID from the given user id, gateway id and client type.
-func NewID(gate string, uid interface{}, device string) ID {
-	id := fmt.Sprintf("%s_%v_%s", gate, uid, device)
+func NewID(gate string, uid interface{}, device interface{}) ID {
+	id := fmt.Sprintf("%s_%v_%v", gate, uid, device)
 	return ID(id)
 }
 

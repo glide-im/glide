@@ -10,9 +10,9 @@ var jwtSecret = []byte("glide-jwt-secret")
 
 type Claims struct {
 	jwt.StandardClaims
-	Uid    int64 `json:"uid"`
-	Device int64 `json:"device"`
-	Ver    int64 `json:"ver"`
+	Uid    string `json:"uid"`
+	Device string `json:"device"`
+	Ver    int64  `json:"ver"`
 }
 
 func genJwt(payload Claims) (string, error) {

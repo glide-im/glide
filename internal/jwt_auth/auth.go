@@ -4,18 +4,22 @@ import (
 	"errors"
 	"fmt"
 	"github.com/glide-im/glide/pkg/auth"
-	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
-	"strconv"
 	"time"
 )
 
 type JwtAuthorize struct {
 }
 
+type JwtAuthInfo struct {
+	UID    string
+	Device string
+}
+
 type Response struct {
 	Token  string
 	Uid    string
+	Device string
 	Server []string
 }
 
@@ -24,31 +28,33 @@ func NewAuthorizeImpl(secret string) *JwtAuthorize {
 	return &JwtAuthorize{}
 }
 
-func (a JwtAuthorize) Auth(c *gate.Info, t *auth.Token) (*auth.Result, error) {
+func (a JwtAuthorize) Auth(c auth.Info, t *auth.Token) (*auth.Result, error) {
+
+	info, ok := c.(*JwtAuthInfo)
+	if !ok {
+		return nil, errors.New("invalid auth info")
+	}
+
 	token, err := parseJwt(t.Token)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token")
 	}
-
-	id := c.ID.UID()
-	device := c.ID.Device()
 
 	//version, err := userdao.Dao.GetTokenVersion(token.Uid, token.Device)
 	//if err != nil || version == 0 || version > token.Ver {
 	//	return nil, fmt.Errorf("invalid token")
 	//}
 
-	if id == token.Uid && device == token.Device {
+	if info.UID == token.Uid && info.Device == token.Device {
 		// logged in
 		logger.D("auth token for a connection is logged in")
 	}
 
 	return &auth.Result{
-		ID:      gate.NewID("", token.Uid, strconv.FormatInt(token.Device, 10)),
 		Success: true,
 		Response: &Response{
 			Token:  t.Token,
-			Uid:    strconv.FormatInt(token.Uid, 10),
+			Uid:    token.Uid,
 			Server: nil,
 		},
 	}, nil
@@ -58,10 +64,16 @@ func (a JwtAuthorize) RemoveToken(t *auth.Token) error {
 	return nil
 }
 
-func (a JwtAuthorize) GetToken(c *gate.Info) (*auth.Token, error) {
+func (a JwtAuthorize) GetToken(c auth.Info) (*auth.Token, error) {
+
+	info, ok := c.(*JwtAuthInfo)
+	if !ok {
+		return nil, errors.New("invalid auth info")
+	}
+
 	jt := Claims{
-		Uid:    c.ID.UID(),
-		Device: c.ID.Device(),
+		Uid:    info.UID,
+		Device: info.Device,
 		Ver:    genJwtVersion(),
 	}
 	expire := time.Now().Add(time.Hour * time.Duration(24*7))

@@ -18,12 +18,12 @@ Name = "im_rpc_server"
 Host = "dengzii.com"
 Port = 3306
 Username = "go_im_test"
-Password = "8dmaRNCYBFHP4F67"
+Password = ""
 Db = "go_im_test"
 Charset = "utf8mb4"
 
 [Redis]
 Host = "dengzii.com"
 Port = 6378
-Password = "tcmm1713."
+Password = ""
 Db = 9

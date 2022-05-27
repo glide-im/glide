@@ -1,21 +1,19 @@
 package auth
 
-import (
-	"github.com/glide-im/glide/pkg/gate"
-)
-
 type Token struct {
 	Token string
 }
 
 type Result struct {
-	ID       gate.ID
 	Success  bool
 	Response interface{}
 }
 
+type Info interface {
+}
+
 type Interface interface {
-	Auth(c *gate.Info, t *Token) (*Result, error)
+	Auth(c Info, t *Token) (*Result, error)
 }
 
 type Authorize interface {
@@ -23,7 +21,7 @@ type Authorize interface {
 
 	RemoveToken(t *Token) error
 
-	GetToken(c *gate.Info) (*Token, error)
+	GetToken(c Info) (*Token, error)
 }
 
 type Server interface {

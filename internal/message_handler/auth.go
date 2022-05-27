@@ -1,10 +1,15 @@
 package message_handler
 
 import (
+	"github.com/glide-im/glide/internal/jwt_auth"
 	"github.com/glide-im/glide/pkg/auth"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
+	"strconv"
 )
+
+type AuthRequest struct {
+}
 
 func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) error {
 
@@ -15,12 +20,19 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 		d.enqueueMessage(c.ID, resp)
 		return nil
 	}
-	r, err := d.auth.Auth(c, &t)
+
+	info := jwt_auth.JwtAuthInfo{
+		UID:    strconv.FormatInt(c.ID.UID(), 10),
+		Device: strconv.FormatInt(c.ID.Device(), 10),
+	}
+	r, err := d.auth.Auth(&info, &t)
 
 	if err == nil && r.Success {
-		resp := messages.NewMessage(msg.Seq, messages.ActionApiSuccess, r.Response)
-		_ = d.def.GetClientInterface().SetClientID(c.ID, r.ID)
-		d.enqueueMessage(r.ID, resp)
+		respMsg := messages.NewMessage(msg.Seq, messages.ActionApiSuccess, r.Response)
+		jwtResp := r.Response.(jwt_auth.Response)
+		id2 := gate.NewID("", jwtResp.Uid, jwtResp.Device)
+		_ = d.def.GetClientInterface().SetClientID(c.ID, id2)
+		d.enqueueMessage(id2, respMsg)
 	} else {
 		resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, r.Response)
 		d.enqueueMessage(c.ID, resp)
