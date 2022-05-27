@@ -1,4 +1,4 @@
-package authorize
+package jwt_auth
 
 import (
 	"errors"
@@ -9,17 +9,18 @@ import (
 	"time"
 )
 
-type AuthorizeImpl struct {
+type JwtAuthorize struct {
 }
 
-func NewAuthorizeImpl() *AuthorizeImpl {
-	return &AuthorizeImpl{}
+func NewAuthorizeImpl(secret string) *JwtAuthorize {
+	jwtSecret = []byte(secret)
+	return &JwtAuthorize{}
 }
 
-func (a AuthorizeImpl) Auth(c *gate.Info, t *auth.Token) error {
+func (a JwtAuthorize) Auth(c *gate.Info, t *auth.Token) (*auth.Result, error) {
 	token, err := parseJwt(t.Token)
 	if err != nil {
-		return fmt.Errorf("invalid token")
+		return nil, fmt.Errorf("invalid token")
 	}
 
 	id := c.ID.UID()
@@ -35,14 +36,18 @@ func (a AuthorizeImpl) Auth(c *gate.Info, t *auth.Token) error {
 		logger.D("auth token for a connection is logged in")
 	}
 
+	return &auth.Result{
+		ID:      token.Uid,
+		Token:   t.Token,
+		Servers: nil,
+	}, nil
+}
+
+func (a JwtAuthorize) RemoveToken(t *auth.Token) error {
 	return nil
 }
 
-func (a AuthorizeImpl) RemoveToken(t *auth.Token) error {
-	return nil
-}
-
-func (a AuthorizeImpl) GetToken(c *gate.Info) (*auth.Token, error) {
+func (a JwtAuthorize) GetToken(c *gate.Info) (*auth.Token, error) {
 	jt := Claims{
 		Uid:    c.ID.UID(),
 		Device: c.ID.Device(),

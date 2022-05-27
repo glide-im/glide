@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/glide-im/glide/internal/authorize"
 	"github.com/glide-im/glide/internal/im_server"
+	"github.com/glide-im/glide/internal/jwt_auth"
 	"github.com/glide-im/glide/internal/message_handler"
 	"github.com/glide-im/glide/internal/message_store_db"
 	"github.com/glide-im/glide/internal/subscription"
@@ -16,7 +16,9 @@ func main() {
 		panic(err)
 	}
 
-	handler, err := message_handler.NewHandler(message_store_db.New(), authorize.NewAuthorizeImpl())
+	auth := jwt_auth.NewAuthorizeImpl("secret")
+	dbStore := message_store_db.New()
+	handler, err := message_handler.NewHandler(dbStore, auth)
 	if err != nil {
 		panic(err)
 	}

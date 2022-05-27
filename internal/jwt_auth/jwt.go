@@ -1,4 +1,4 @@
-package authorize
+package jwt_auth
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var jwtSecret []byte = []byte("glide-jwt-secret")
+var jwtSecret = []byte("glide-jwt-secret")
 
 type Claims struct {
 	jwt.StandardClaims

@@ -15,15 +15,14 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 		d.enqueueMessage(c.ID, resp)
 		return nil
 	}
-	err := d.auth.Auth(c, &t)
+	r, err := d.auth.Auth(c, &t)
 
-	if err != nil {
-		resp := messages.NewMessage(0, messages.ActionApiSuccess, "")
-		id := gate.NewID("", "", "")
-		_ = d.def.GetClientInterface().SetClientID(c.ID, id)
-		d.enqueueMessage(c.ID, resp)
+	if err == nil {
+		resp := messages.NewMessage(msg.Seq, messages.ActionApiSuccess, r.Response)
+		_ = d.def.GetClientInterface().SetClientID(c.ID, r.ID)
+		d.enqueueMessage(r.ID, resp)
 	} else {
-		resp := messages.NewMessage(0, messages.ActionApiFailed, err.Error())
+		resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, r.Response)
 		d.enqueueMessage(c.ID, resp)
 	}
 	return nil

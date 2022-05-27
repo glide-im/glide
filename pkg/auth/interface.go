@@ -9,13 +9,12 @@ type Token struct {
 }
 
 type Result struct {
-	ID      int64
-	Token   string
-	Servers []string
+	ID       gate.ID
+	Response interface{}
 }
 
 type Interface interface {
-	Auth(c *gate.Info, t *Token) error
+	Auth(c *gate.Info, t *Token) (*Result, error)
 }
 
 type Authorize interface {
