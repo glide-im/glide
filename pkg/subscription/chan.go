@@ -22,8 +22,6 @@ func (s *Subscriber) Notify(msg Message) error {
 }
 
 type Channel interface {
-	GetSubscriber(id SubscriberID) (Subscriber, error)
-
 	Subscribe(id SubscriberID, extra interface{}) error
 
 	Unsubscribe(id SubscriberID) error
@@ -31,8 +29,6 @@ type Channel interface {
 	UpdateSubscribe(id SubscriberID, extra interface{}) error
 
 	Update(extra interface{}) error
-
-	UnsubscribeAll() error
 
 	Publish(msg Message) error
 

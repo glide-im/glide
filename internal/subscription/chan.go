@@ -56,7 +56,7 @@ func onQueueExecutorPanic(i interface{}) {
 }
 
 type Group struct {
-	gid int64
+	id subscription.ChanID
 
 	msgSequence int64
 	seqRemain   int64
@@ -67,9 +67,9 @@ type Group struct {
 	dissolved bool
 
 	// messages 群消息队列
-	messages chan *messages.ChatMessage
+	messages chan *PublishMessage
 	// notify 群通知队列
-	notify chan *messages.GroupNotify
+	notify chan *PublishMessage
 
 	queueRunning int32
 	queued       int32
@@ -79,68 +79,89 @@ type Group struct {
 
 	lastMsgAt time.Time
 	mu        *sync.Mutex
-	members   map[int64]*memberInfo
+	members   map[subscription.SubscriberID]*memberInfo
 
 	store store.SubscriptionStore
 	gate  gate.Interface
 }
 
-func (g *Group) Update(extra interface{}) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *Group) GetSubscriber(id subscription.SubscriberID) (subscription.Subscriber, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *Group) Subscribe(id subscription.SubscriberID, extra interface{}) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *Group) Unsubscribe(id subscription.SubscriberID) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *Group) UpdateSubscribe(id subscription.SubscriberID, extra interface{}) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *Group) UnsubscribeAll() error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *Group) Publish(msg subscription.Message) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (g *Group) Close() error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func newGroup(gid int64, seq int64) *Group {
+func newGroup(chanID subscription.ChanID, seq int64) *Group {
 	ret := new(Group)
 	ret.mu = &sync.Mutex{}
-	ret.members = map[int64]*memberInfo{}
+	ret.members = map[subscription.SubscriberID]*memberInfo{}
 	ret.startup = strconv.FormatInt(time.Now().Unix(), 10)
-	ret.messages = make(chan *messages.ChatMessage, 100)
-	ret.notify = make(chan *messages.GroupNotify, 10)
+	ret.messages = make(chan *PublishMessage, 100)
+	ret.notify = make(chan *PublishMessage, 10)
 	ret.checkActive = tw.After(messageQueueSleep)
 	ret.queueRunning = 0
 	ret.msgSequence = seq
 	ret.seqRemain = msgSeqSegmentLen
-	ret.gid = gid
+	ret.id = chanID
 	return ret
 }
 
-func (g *Group) EnqueueNotify(msg *messages.GroupNotify) error {
+func (g *Group) Update(extra interface{}) error {
+
+	return nil
+}
+
+func (g *Group) Subscribe(id subscription.SubscriberID, extra interface{}) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	_, ok := g.members[id]
+	if ok {
+		return errors.New("already subscribed")
+	}
+	g.members[id] = newMemberInfo()
+	return nil
+}
+
+func (g *Group) Unsubscribe(id subscription.SubscriberID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	_, ok := g.members[id]
+	if !ok {
+		return errors.New("not subscribed")
+	}
+	delete(g.members, id)
+	return nil
+}
+
+func (g *Group) UpdateSubscribe(id subscription.SubscriberID, extra interface{}) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	info, ok := g.members[id]
+	if !ok {
+		return errors.New("not subscribed")
+	}
+	g.members[id] = info
+	return nil
+}
+
+func (g *Group) Publish(msg subscription.Message) error {
+
+	message, ok := msg.(*PublishMessage)
+	if !ok {
+		return errors.New("invalid message type, expect *subscription.PublishMessage")
+	}
+
+	if message.From == "" {
+		return g.EnqueueNotify(message)
+	}
+
+	_, err := g.EnqueueMessage(message)
+	return err
+}
+
+func (g *Group) Close() error {
+
+	return nil
+}
+
+func (g *Group) EnqueueNotify(msg *PublishMessage) error {
 	seq := atomic.AddInt64(&g.msgSequence, 1)
 	msg.Seq = seq
 	select {
@@ -152,10 +173,10 @@ func (g *Group) EnqueueNotify(msg *messages.GroupNotify) error {
 	return g.checkMsgQueue()
 }
 
-func (g *Group) EnqueueMessage(msg *messages.ChatMessage, n subscription.Message) (int64, error) {
+func (g *Group) EnqueueMessage(m *PublishMessage) (int64, error) {
 
 	g.mu.Lock()
-	mf, exist := g.members[msg.From]
+	mf, exist := g.members[m.From]
 	g.mu.Unlock()
 
 	if !exist {
@@ -165,32 +186,31 @@ func (g *Group) EnqueueMessage(msg *messages.ChatMessage, n subscription.Message
 		return 0, errors.New("a muted group member send message")
 	}
 
-	now := time.Now().Unix()
 	seq := atomic.AddInt64(&g.msgSequence, 1)
 
-	err := g.store.StoreMessage("", n)
+	cm := messages.ChatMessage{}
+	err := m.Message.DeserializeData(&cm)
+	if err != nil {
+		return 0, err
+	}
+	cm.Seq = seq
+	m.Message.Data = messages.NewData(&cm)
+
+	err = g.store.StoreMessage(g.id, m)
 	if err != nil {
 		atomic.AddInt64(&g.msgSequence, -1)
 		return 0, err
 	}
 	g.checkSeqRemain()
 
-	err = g.store.StoreSeq("", seq)
+	err = g.store.StoreSeq(g.id, seq)
 	if err != nil {
 		logger.E("Group.EnqueueMessage update group message state error, %v", err)
 		return 0, err
 	}
 
-	dMsg := msg
-	msg.Seq = seq
-	msg.To = g.gid
-	msg.SendAt = now
-	if err != nil {
-		return 0, err
-	}
-
 	select {
-	case g.messages <- dMsg:
+	case g.messages <- m:
 		atomic.AddInt32(&g.queued, 1)
 	default:
 		return 0, errors.New("too many messages,the group message queue is full")
@@ -228,7 +248,7 @@ func (g *Group) checkMsgQueue() error {
 					atomic.AddInt32(&g.queued, -1)
 					switch m.Type {
 					default:
-						g.SendMessage(0, messages.NewMessage(0, messages.ActionNotifyGroup, m))
+						g.sendMessage(m)
 					}
 					// 优先派送群通知消息
 					continue
@@ -248,7 +268,7 @@ func (g *Group) checkMsgQueue() error {
 				case m := <-g.messages:
 					atomic.AddInt32(&g.queued, -1)
 					g.lastMsgAt = time.Now()
-					g.SendMessage(m.From, messages.NewMessage(-1, messages.ActionGroupMessage, m))
+					g.sendMessage(m)
 				}
 			}
 		REST:
@@ -262,49 +282,18 @@ func (g *Group) checkMsgQueue() error {
 	return err
 }
 
-func (g *Group) SendMessage(from int64, message *messages.GlideMessage) {
-	logger.D("Group.SendMessage: %s", message)
+func (g *Group) sendMessage(message *PublishMessage) {
+	logger.D("Group.sendMessage: %s", message)
+
 	g.mu.Lock()
-	for uid, mf := range g.members {
-		if !mf.online || uid == from {
+	for subscriberID, mf := range g.members {
+		if !mf.online || subscriberID == message.From {
 			continue
 		}
-		err := g.gate.EnqueueMessage(gate.NewID2(uid), message)
+		err := g.gate.EnqueueMessage(gate.NewID2(subscriberID), message.Message)
 		if err != nil {
 			logger.E("%v", err)
 		}
 	}
 	g.mu.Unlock()
-}
-
-func (g *Group) updateMember(u subscription.Update) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	return nil
-}
-
-func (g *Group) GetMember(id int64) *memberInfo {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.members[id]
-}
-
-func (g *Group) PutMember(member int64, s *memberInfo) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.members[member] = s
-}
-
-func (g *Group) RemoveMember(uid int64) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	delete(g.members, uid)
-}
-
-func (g *Group) HasMember(uid int64) bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	_, exist := g.members[uid]
-	return exist
 }
