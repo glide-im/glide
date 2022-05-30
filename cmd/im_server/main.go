@@ -23,10 +23,11 @@ func main() {
 		panic(err)
 	}
 
+	store := &message_store_db.SubscriptionMessageStore{}
 	options := bootstrap.Options{
 		Messaging:    handler,
 		Gate:         gateway,
-		Subscription: subscription.NewSubscription(),
+		Subscription: subscription.NewSubscription(store),
 	}
 
 	err = bootstrap.Bootstrap(&options)

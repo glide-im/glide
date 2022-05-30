@@ -1,29 +1,34 @@
 package subscription
 
 import (
+	"errors"
 	"github.com/glide-im/glide/pkg/gate"
 )
 
 const (
 	SubscriberSubscribe   int64 = 1
 	SubscriberUnsubscribe       = 2
-	SubscriberMute              = 3
-	SubscriberUnmute            = 4
+	SubscriberUpdate            = 5
 )
 
 const (
 	ChanCreate int64 = 1
 	ChanDelete       = 2
-	ChanMute         = 3
-	ChanUnmute       = 4
+	ChanUpdate       = 3
+)
+
+var (
+	ErrUnknownFlag = errors.New("unknown flag")
 )
 
 // ChanID is a unique identifier for a channel.
 type ChanID string
 
-type SubscriberUpdate struct {
+type SubscriberID string
+
+type Update struct {
 	Flag int64
-	ID   gate.ID
+	ID   SubscriberID
 
 	Extra interface{}
 }
@@ -39,9 +44,11 @@ type Interface interface {
 }
 
 type Subscribe interface {
+	Interface
+
 	SetGateInterface(gate gate.Interface)
 
-	UpdateSubscriber(id ChanID, updates []SubscriberUpdate) error
+	UpdateSubscriber(id ChanID, updates []Update) error
 
 	UpdateChannel(id ChanID, update ChannelUpdate) error
 }

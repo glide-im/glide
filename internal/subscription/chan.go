@@ -85,6 +85,46 @@ type Group struct {
 	gate  gate.Interface
 }
 
+func (g *Group) Update(extra interface{}) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (g *Group) GetSubscriber(id subscription.SubscriberID) (subscription.Subscriber, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (g *Group) Subscribe(id subscription.SubscriberID, extra interface{}) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (g *Group) Unsubscribe(id subscription.SubscriberID) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (g *Group) UpdateSubscribe(id subscription.SubscriberID, extra interface{}) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (g *Group) UnsubscribeAll() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (g *Group) Publish(msg subscription.Message) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (g *Group) Close() error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func newGroup(gid int64, seq int64) *Group {
 	ret := new(Group)
 	ret.mu = &sync.Mutex{}
@@ -237,7 +277,7 @@ func (g *Group) SendMessage(from int64, message *messages.GlideMessage) {
 	g.mu.Unlock()
 }
 
-func (g *Group) updateMember(u subscription.SubscriberUpdate) error {
+func (g *Group) updateMember(u subscription.Update) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
