@@ -1,8 +1,8 @@
 package message_handler
 
 import (
-	"github.com/glide-im/glide/internal/jwt_auth"
 	"github.com/glide-im/glide/pkg/auth"
+	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 	"strconv"

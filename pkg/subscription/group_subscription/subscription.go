@@ -1,4 +1,4 @@
-package subscription
+package group_subscription
 
 import (
 	"errors"
@@ -155,7 +155,7 @@ func (u *realSubscription) CreateChannel(chID subscription.ChanID, update *subsc
 		return subscription.ErrChanAlreadyExists
 	}
 
-	u.channels[chID] = newGroup(1, 0)
+	u.channels[chID] = newGroup(chID, 0)
 
 	return nil
 }

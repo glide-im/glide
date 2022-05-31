@@ -2,11 +2,11 @@ package main
 
 import (
 	"github.com/glide-im/glide/internal/im_server"
-	"github.com/glide-im/glide/internal/jwt_auth"
-	"github.com/glide-im/glide/internal/message_handler"
 	"github.com/glide-im/glide/internal/message_store_db"
-	"github.com/glide-im/glide/internal/subscription"
+	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/bootstrap"
+	"github.com/glide-im/glide/pkg/messaging/message_handler"
+	"github.com/glide-im/glide/pkg/subscription/group_subscription"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	options := bootstrap.Options{
 		Messaging:    handler,
 		Gate:         gateway,
-		Subscription: subscription.NewSubscription(store),
+		Subscription: group_subscription.NewSubscription(store),
 	}
 
 	err = bootstrap.Bootstrap(&options)

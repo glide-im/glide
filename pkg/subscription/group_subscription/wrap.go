@@ -1,4 +1,4 @@
-package subscription
+package group_subscription
 
 import "github.com/glide-im/glide/pkg/subscription"
 

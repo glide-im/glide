@@ -1,9 +1,9 @@
 package im_server
 
 import (
-	"github.com/glide-im/glide/internal/gateway"
 	"github.com/glide-im/glide/pkg/conn"
 	"github.com/glide-im/glide/pkg/gate"
+	"github.com/glide-im/glide/pkg/gate/gateway"
 	"time"
 )
 
@@ -19,7 +19,9 @@ type GatewayServer struct {
 
 func NewServer(addr string, port int) (gate.Server, error) {
 	srv := GatewayServer{}
-	srv.Impl, _ = gateway.NewServer()
+	srv.Impl, _ = gateway.NewServer(
+		&gateway.Options{MaxMessageConcurrency: 30_0000},
+	)
 	srv.addr = addr
 	srv.port = port
 

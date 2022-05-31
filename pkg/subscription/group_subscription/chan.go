@@ -1,4 +1,4 @@
-package subscription
+package group_subscription
 
 import (
 	"errors"
