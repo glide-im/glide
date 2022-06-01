@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"errors"
 	"github.com/glide-im/glide/pkg/conn"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
@@ -110,7 +111,7 @@ func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
 	s := atomic.LoadInt32(&c.state)
 	if s == stateClosed {
 		logger.D("client has closed, enqueue msg failed")
-		return ErrClientClosed
+		return errors.New("client has closed")
 	}
 	logger.I("Interface(id=%v, %s): %v", c.info.ID, msg.GetAction(), msg)
 	if msg.GetSeq() < 0 {

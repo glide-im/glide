@@ -1,18 +1,7 @@
-[ApiHttp]
-Addr = "0.0.0.0"
-Port = 8081
-
 [WsServer]
 Addr = "0.0.0.0"
 Port = 8080
-
-[IMRpcServer]
-EnableGroup = false
-Addr = "0.0.0.0"
-Port = 8092
-Network = "tcp"
-Etcd = []
-Name = "im_rpc_server"
+JwtSecret = "secret"
 
 [MySql]
 Host = "dengzii.com"

@@ -50,7 +50,7 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 			//_, err := msgdao.AddChatMessage(&dbMsg)
 
 			// 保存消息
-			err := d.store.StoreMessage(c.ID, msg)
+			err := d.store.StoreMessage(msg)
 			if err != nil {
 				logger.E("save chat message error %v", err)
 				return err

@@ -3,16 +3,14 @@ package config
 import "github.com/spf13/viper"
 
 var (
-	MySql       *MySqlConf
-	Redis       *RedisConf
-	WsServer    *WsServerConf
-	ApiHttp     *ApiHttpConf
-	IMRpcServer *IMRpcServerConf
+	MySql    *MySqlConf
+	WsServer *WsServerConf
 )
 
 type WsServerConf struct {
-	Addr string
-	Port int
+	Addr      string
+	Port      int
+	JwtSecret string
 }
 
 type ApiHttpConf struct {
@@ -45,7 +43,7 @@ type RedisConf struct {
 	Db       int
 }
 
-func Load() error {
+func MustLoad() {
 
 	viper.SetConfigName("config.toml")
 	viper.SetConfigType("toml")
@@ -56,7 +54,7 @@ func Load() error {
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		return err
+		panic(err)
 	}
 	c := struct {
 		MySql       *MySqlConf
@@ -68,13 +66,8 @@ func Load() error {
 
 	err = viper.Unmarshal(&c)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	Redis = c.Redis
 	MySql = c.MySql
 	WsServer = c.WsServer
-	ApiHttp = c.ApiHttp
-	IMRpcServer = c.IMRpcServer
-
-	return err
 }
