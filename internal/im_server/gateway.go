@@ -4,6 +4,7 @@ import (
 	"github.com/glide-im/glide/pkg/conn"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/gate/gateway"
+	"log"
 	"time"
 )
 
@@ -13,17 +14,19 @@ type GatewayServer struct {
 	server conn.Server
 	h      gate.MessageHandler
 
-	addr string
-	port int
+	gateID string
+	addr   string
+	port   int
 }
 
-func NewServer(addr string, port int) (gate.Server, error) {
+func NewServer(id string, addr string, port int) (gate.Server, error) {
 	srv := GatewayServer{}
 	srv.Impl, _ = gateway.NewServer(
 		&gateway.Options{MaxMessageConcurrency: 30_0000},
 	)
 	srv.addr = addr
 	srv.port = port
+	srv.gateID = id
 
 	options := &conn.WsServerOptions{
 		ReadTimeout:  time.Minute * 3,
@@ -49,7 +52,11 @@ func (c *GatewayServer) SetMessageHandler(h gate.MessageHandler) {
 func (c *GatewayServer) HandleConnection(conn conn.Connection) gate.ID {
 
 	// 获取一个临时 uid 标识这个连接
-	id := gate.NewID("", "0", "0")
+	id, err := gate.GenTempID(c.gateID)
+	if err != nil {
+		log.Println("[gateway] gen temp id error:", err)
+		return ""
+	}
 	ret := gateway.NewClient(conn, c, c.h)
 	ret.SetID(id)
 	c.Impl.AddClient(ret)

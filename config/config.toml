@@ -2,6 +2,7 @@
 Addr = "0.0.0.0"
 Port = 8080
 JwtSecret = "secret"
+ID = "node1"
 
 [MySql]
 Host = "dengzii.com"

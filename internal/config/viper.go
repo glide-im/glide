@@ -8,6 +8,7 @@ var (
 )
 
 type WsServerConf struct {
+	ID        string
 	Addr      string
 	Port      int
 	JwtSecret string

@@ -14,7 +14,7 @@ func main() {
 
 	config.MustLoad()
 
-	gateway, err := im_server.NewServer(config.WsServer.Addr, config.WsServer.Port)
+	gateway, err := im_server.NewServer(config.WsServer.ID, config.WsServer.Addr, config.WsServer.Port)
 	if err != nil {
 		panic(err)
 	}
