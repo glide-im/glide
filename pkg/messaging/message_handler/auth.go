@@ -1,6 +1,7 @@
 package message_handler
 
 import (
+	"errors"
 	"github.com/glide-im/glide/pkg/auth"
 	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/gate"
@@ -29,7 +30,12 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 
 	if err == nil && r.Success {
 		respMsg := messages.NewMessage(msg.Seq, messages.ActionApiSuccess, r.Response)
-		jwtResp := r.Response.(jwt_auth.Response)
+		jwtResp, ok := r.Response.(*jwt_auth.Response)
+		if !ok {
+			resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, nil)
+			d.enqueueMessage(c.ID, resp)
+			return errors.New("invalid response type: expected *jwt_auth.Response")
+		}
 		id2 := gate.NewID("", jwtResp.Uid, jwtResp.Device)
 		_ = d.def.GetClientInterface().SetClientID(c.ID, id2)
 		d.enqueueMessage(id2, respMsg)
