@@ -189,7 +189,7 @@ func (g *Group) EnqueueMessage(m *PublishMessage) (int64, error) {
 	seq := atomic.AddInt64(&g.msgSequence, 1)
 
 	cm := messages.ChatMessage{}
-	err := m.Message.DeserializeData(&cm)
+	err := m.Message.Data.Deserialize(&cm)
 	if err != nil {
 		return 0, err
 	}

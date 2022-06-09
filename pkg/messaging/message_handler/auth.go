@@ -15,7 +15,7 @@ type AuthRequest struct {
 func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) error {
 
 	t := auth.Token{}
-	e := msg.DeserializeData(&t)
+	e := msg.Data.Deserialize(&t)
 	if e != nil {
 		resp := messages.NewMessage(0, messages.ActionApiFailed, "invalid token")
 		d.enqueueMessage(c.ID, resp)

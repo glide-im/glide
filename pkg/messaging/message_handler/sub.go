@@ -4,6 +4,8 @@ import (
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
+	"github.com/glide-im/glide/pkg/subscription"
+	"strconv"
 )
 
 // handleGroupMsg 分发群消息
@@ -17,19 +19,16 @@ func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage
 
 	var err error
 
-	err = d.def.GetGroupInterface().PublishMessage("", groupMsg)
+	id := subscription.ChanID(strconv.FormatInt(groupMsg.To, 10))
+	err = d.def.GetGroupInterface().PublishMessage(id, groupMsg)
 
 	if err != nil {
 		logger.E("dispatch group message error: %v", err)
-		notify := messages.NewMessage(0, messages.ActionMessageFailed, messages.NewAckNotify(groupMsg.Mid))
+		notify := messages.NewMessage(0, messages.ActionMessageFailed, messages.AckNotify{Mid: groupMsg.Mid})
 		d.enqueueMessage(c.ID, notify)
 	}
 
 	return nil
-}
-
-func (d *MessageHandler) handleGroupRecallMsg(c *gate.Info, msg *messages.GlideMessage) error {
-	return d.handleGroupMsg(c, msg)
 }
 
 func (d *MessageHandler) handleAckGroupMsgRequest(c *gate.Info, msg *messages.GlideMessage) error {

@@ -1,60 +1,32 @@
 package messages
 
 import (
-	"encoding/json"
-	"github.com/glide-im/glide/pkg/logger"
+	"errors"
+	"fmt"
 )
 
-type Data struct {
-	des interface{}
-}
+var messageVersion int64 = 1
 
-func NewData(d interface{}) *Data {
-	return &Data{
-		des: d,
-	}
-}
-
-func (d *Data) Data() interface{} {
-	return d.des
-}
-
-func (d *Data) UnmarshalJSON(bytes []byte) error {
-	d.des = bytes
-	return nil
-}
-
-func (d *Data) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.des)
-}
-
-func (d *Data) bytes() []byte {
-	bytes, ok := d.des.([]byte)
-	if ok {
-		return bytes
-	}
-	marshalJSON, err := d.MarshalJSON()
-	if err != nil {
-		logger.E("message data marshal json error %v", err)
-		return nil
-	}
-	return marshalJSON
-}
-
-func (d *Data) Deserialize(i interface{}) error {
-	s, ok := d.des.([]byte)
-	if ok {
-		return json.Unmarshal(s, i)
-	}
-	return nil
-}
-
+// GlideMessage common data of all message
 type GlideMessage struct {
-	Ver    int64
-	Seq    int64
-	Action string
-	Data   *Data
-	Extra  map[string]string
+	Ver    int64             `json:"ver"`
+	Seq    int64             `json:"seq"`
+	Action string            `json:"action"`
+	Data   *Data             `json:"data,omitempty"`
+	Extra  map[string]string `json:"extra,omitempty"`
+}
+
+func NewMessage(seq int64, action Action, data interface{}) *GlideMessage {
+	return &GlideMessage{
+		Ver:    messageVersion,
+		Seq:    seq,
+		Action: string(action),
+		Data:   NewData(data),
+	}
+}
+
+func NewEmptyMessage() *GlideMessage {
+	return &GlideMessage{}
 }
 
 func (g *GlideMessage) GetSeq() int64 {
@@ -69,19 +41,57 @@ func (g *GlideMessage) SetSeq(seq int64) {
 	g.Seq = seq
 }
 
-func (g *GlideMessage) DeserializeData(i interface{}) error {
-	return g.Data.Deserialize(i)
+func (g *GlideMessage) String() string {
+	if g == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("&Message{Ver:%d, Action:%s, Data:%s Extra:%s}", g.Ver, g.Action, g.Data, g.Extra)
 }
 
-func NewMessage(seq int64, action Action, data interface{}) *GlideMessage {
-	return &GlideMessage{
-		Ver:    0,
-		Seq:    seq,
-		Action: string(action),
-		Data:   NewData(data),
+// Data used to wrap message data.
+// Server received a message, the data type is []byte, it's waiting for deserialize to specified struct.
+// When server push a message to client, the data type is specific struct.
+type Data struct {
+	des interface{}
+}
+
+func NewData(d interface{}) *Data {
+	return &Data{
+		des: d,
 	}
 }
 
-func NewEmptyMessage() *GlideMessage {
-	return &GlideMessage{}
+func (d *Data) UnmarshalJSON(bytes []byte) error {
+	d.des = bytes
+	return nil
+}
+
+func (d *Data) MarshalJSON() ([]byte, error) {
+	bytes, ok := d.des.([]byte)
+	if ok {
+		return bytes, nil
+	}
+	return JsonCodec.Encode(d.des)
+}
+
+func (d *Data) Deserialize(i interface{}) error {
+	if d == nil {
+		return errors.New("data is nil")
+	}
+	s, ok := d.des.([]byte)
+	if ok {
+		return JsonCodec.Decode(s, i)
+	}
+	return errors.New("invalid data")
+}
+
+func (d *Data) String() string {
+	b, ok := d.des.([]byte)
+	var s interface{}
+	if ok {
+		s = string(b)
+	} else {
+		s = d.des
+	}
+	return fmt.Sprintf("%s", s)
 }

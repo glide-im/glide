@@ -3,14 +3,11 @@ package messages
 type Action string
 
 const (
-	ActionChatMessage        Action = "message.chat"
-	ActionChatMessageRecall         = "message.chat.recall" // TODO remove
-	ActionChatMessageRetry          = "message.chat.retry"  // 消息重发, 服务器未ack
-	ActionChatMessageResend         = "message.chat.resend" // 消息重发, 服务器已ack, 接收方未ack
-	ActionGroupMessage              = "message.group"
-	ActionGroupMessageRecall        = "message.group.recall" // TODO remove
-	ActionMessageFailed             = "message.failed.send"
-	ActionClientCustom              = "message.cli"
+	ActionChatMessage       Action = "message.chat"
+	ActionChatMessageResend        = "message.chat.resend"
+	ActionGroupMessage             = "message.group"
+	ActionMessageFailed            = "message.failed.send"
+	ActionClientCustom             = "message.cli"
 
 	ActionNotifyNeedAuth      = "notify.auth"
 	ActionNotifyKickOut       = "notify.kickout"
@@ -25,8 +22,8 @@ const (
 	ActionAckMessage  = "ack.message"
 	ActionAckNotify   = "ack.notify"
 
-	ActionApiAuth    = "api.auth"
 	ActionHeartbeat  = "heartbeat"
+	ActionApiAuth    = "api.auth"
 	ActionApiFailed  = "api.failed"
 	ActionApiSuccess = "api.success"
 )

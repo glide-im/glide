@@ -36,7 +36,6 @@ func NewHandler(store store.MessageStore, auth auth.Interface) (*MessageHandler,
 	ret.PutMessageHandler(messages.ActionAckRequest, ret.handleAckRequest)
 	ret.PutMessageHandler(messages.ActionHeartbeat, ret.handleHeartbeat)
 	ret.PutMessageHandler(messages.ActionClientCustom, ret.handleClientCustom)
-	ret.PutMessageHandler(messages.ActionGroupMessageRecall, ret.handleGroupRecallMsg)
 	ret.PutMessageHandler(messages.ActionAckGroupMsg, ret.handleAckGroupMsgRequest)
 	ret.PutMessageHandler(messages.ActionApiAuth, ret.handleAuth)
 	return ret, nil
@@ -73,7 +72,7 @@ func (d *MessageHandler) enqueueMessage(id gate.ID, message *messages.GlideMessa
 	}
 }
 func (d *MessageHandler) unwrap(c *gate.Info, msg *messages.GlideMessage, to interface{}) bool {
-	err := msg.DeserializeData(to)
+	err := msg.Data.Deserialize(to)
 	if err != nil {
 		logger.E("sender chat senderMsg %v", err)
 		return false
