@@ -7,7 +7,10 @@ import (
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/messaging"
 	"github.com/glide-im/glide/pkg/store"
+	"github.com/glide-im/glide/pkg/subscription"
 )
+
+var _ messaging.Messaging = (*MessageHandler)(nil)
 
 type MessageHandler struct {
 	def   *messaging.Handler
@@ -53,6 +56,10 @@ func (d *MessageHandler) PutMessageHandler(action messages.Action, i messaging.H
 
 func (d *MessageHandler) SetGate(g gate.Gateway) {
 	d.def.SetGate(g)
+}
+
+func (d *MessageHandler) SetSubscription(s subscription.Interface) {
+	d.def.SetSubscription(s)
 }
 
 func (d *MessageHandler) dispatchGroupMessage(gid int64, msg *messages.ChatMessage) error {
