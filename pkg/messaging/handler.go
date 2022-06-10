@@ -55,13 +55,14 @@ func NewDefaultImpl(store store.MessageStore) (*Handler, error) {
 
 func (d *Handler) Handle(cInfo *gate.Info, msg *messages.GlideMessage) error {
 
-	if cInfo.ID == "" {
+	if cInfo.ID == "" || cInfo.ID.UID() == "" {
 		return errors.New("unauthorized")
 	}
+	msg.From = cInfo.ID.UID()
 
 	logger.D("new message: id=%v", cInfo.ID)
 	err := d.execPool.Submit(func() {
-		h, ok := d.handlers[messages.Action(msg.GetAction())]
+		h, ok := d.handlers[msg.GetAction()]
 		if ok {
 			err := h(cInfo, msg)
 			if err != nil {
