@@ -13,7 +13,7 @@ import (
 var _ messaging.Messaging = (*MessageHandler)(nil)
 
 type MessageHandler struct {
-	def   *messaging.Handler
+	def   *messaging.MessageInterfaceImpl
 	store store.MessageStore
 
 	auth auth.Interface
@@ -31,14 +31,18 @@ func NewHandler(store store.MessageStore, auth auth.Interface) (*MessageHandler,
 		store: store,
 		auth:  auth,
 	}
-	ret.PutMessageHandler(messages.ActionChatMessage, ret.handleChatMessage)
-	ret.PutMessageHandler(messages.ActionGroupMessage, ret.handleGroupMsg)
-	ret.PutMessageHandler(messages.ActionAckRequest, ret.handleAckRequest)
-	ret.PutMessageHandler(messages.ActionHeartbeat, ret.handleHeartbeat)
-	ret.PutMessageHandler(messages.ActionClientCustom, ret.handleClientCustom)
-	ret.PutMessageHandler(messages.ActionAckGroupMsg, ret.handleAckGroupMsgRequest)
-	ret.PutMessageHandler(messages.ActionApiAuth, ret.handleAuth)
+	ret.AddHandler(messaging.NewActionHandler(messages.ActionChatMessage, ret.handleChatMessage))
+	ret.AddHandler(messaging.NewActionHandler(messages.ActionGroupMessage, ret.handleGroupMsg))
+	ret.AddHandler(messaging.NewActionHandler(messages.ActionAckRequest, ret.handleAckRequest))
+	ret.AddHandler(messaging.NewActionHandler(messages.ActionHeartbeat, ret.handleHeartbeat))
+	ret.AddHandler(messaging.NewActionHandler(messages.ActionClientCustom, ret.handleClientCustom))
+	ret.AddHandler(messaging.NewActionHandler(messages.ActionAckGroupMsg, ret.handleAckGroupMsgRequest))
+	ret.AddHandler(messaging.NewActionHandler(messages.ActionApiAuth, ret.handleAuth))
 	return ret, nil
+}
+
+func (d *MessageHandler) AddHandler(i messaging.MessageHandler) {
+	d.def.AddHandler(i)
 }
 
 func (d *MessageHandler) SetAuthorize(a auth.Interface) {
@@ -47,10 +51,6 @@ func (d *MessageHandler) SetAuthorize(a auth.Interface) {
 
 func (d *MessageHandler) Handle(cInfo *gate.Info, msg *messages.GlideMessage) error {
 	return d.def.Handle(cInfo, msg)
-}
-
-func (d *MessageHandler) PutMessageHandler(action messages.Action, i messaging.HandlerFunc) {
-	d.def.PutMessageHandler(action, i)
 }
 
 func (d *MessageHandler) SetGate(g gate.Gateway) {

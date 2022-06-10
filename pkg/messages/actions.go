@@ -16,6 +16,7 @@ const (
 	ActionNotifyAccountLogin  = "notify.login"
 	ActionNotifyAccountLogout = "notify.logout"
 	ActionNotifyError         = "notify.error"
+	ActionNotifyUnknownAction = "notify.unknown.action"
 
 	ActionAckRequest  = "ack.request"
 	ActionAckGroupMsg = "ack.group.msg"
