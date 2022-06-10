@@ -15,9 +15,11 @@ func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage
 	if !d.unwrap(c, msg, groupMsg) {
 		return nil
 	}
-	groupMsg.From = c.ID.UID()
-
-	var err error
+	from, err := strconv.ParseInt(c.ID.UID(), 10, 64)
+	if err != nil {
+		return err
+	}
+	groupMsg.From = from
 
 	id := subscription.ChanID(strconv.FormatInt(groupMsg.To, 10))
 	err = d.def.GetGroupInterface().PublishMessage(id, groupMsg)

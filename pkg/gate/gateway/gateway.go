@@ -13,7 +13,7 @@ type Options struct {
 	MaxMessageConcurrency int
 }
 
-var _ gate.Gateway = &Impl{}
+var _ gate.Gateway = (*Impl)(nil)
 
 type Impl struct {
 	gate.Gateway

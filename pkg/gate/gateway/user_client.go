@@ -26,6 +26,8 @@ const (
 
 // Client represent a user conn conn
 type Client struct {
+
+	// conn is the connection
 	conn conn.Connection
 
 	logged    bool
@@ -49,11 +51,9 @@ type Client struct {
 
 	info *gate.Info
 
-	// seq 服务器下行消息递增序列号
-	seq int64
-
+	// mgr the client manager which manage this client
 	mgr gate.Gateway
-
+	// msgHandler client message handler
 	msgHandler gate.MessageHandler
 }
 
@@ -65,7 +65,6 @@ func NewClient(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandl
 	ret.messages = make(chan *messages.GlideMessage, 60)
 	ret.connectAt = time.Now()
 	ret.rCloseCh = make(chan struct{})
-	ret.seq = 0
 	ret.hbR = tw.After(heartbeatDuration)
 	ret.hbW = tw.After(heartbeatDuration)
 	ret.info = &gate.Info{
@@ -110,14 +109,9 @@ func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
 	}()
 	s := atomic.LoadInt32(&c.state)
 	if s == stateClosed {
-		logger.D("client has closed, enqueue msg failed")
 		return errors.New("client has closed")
 	}
-	logger.I("Interface(id=%v, %s): %v", c.info.ID, msg.GetAction(), msg)
-	if msg.GetSeq() < 0 {
-		// 服务端主动发送的消息使用服务端的序列号
-		msg.SetSeq(c.getNextSeq())
-	}
+	logger.I("EnqueueMessage ID=%s msg=%v", c.info.ID, msg)
 	select {
 	case c.messages <- msg:
 	default:
@@ -175,7 +169,7 @@ STOP:
 	c.hbR.Cancel()
 	atomic.StoreInt32(&c.readClosed, 1)
 	close(done)
-	logger.D("client read closed, id=%v", c.info.ID)
+	logger.D("read closed id=%s", c.info.ID)
 }
 
 // writeMessage 开始向 Connection 中写入消息队列中的消息
@@ -183,7 +177,10 @@ func (c *Client) writeMessage() {
 	defer func() {
 		err := recover()
 		if err != nil {
-			logger.D("Client write message error: %v", err)
+			logger.D("write message error, exit client: %v", err)
+			atomic.StoreInt32(&c.state, stateClosed)
+			close(c.messages)
+			_ = c.conn.Close()
 		}
 	}()
 
@@ -194,7 +191,7 @@ func (c *Client) writeMessage() {
 				logger.D("read closed, down msg queue timeout, close write now, id=%v", c.info.ID)
 				goto STOP
 			}
-			_ = c.EnqueueMessage(messages.NewMessage(c.getNextSeq(), messages.ActionHeartbeat, ""))
+			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, ""))
 			c.hbW.Cancel()
 			c.hbW = tw.After(heartbeatDuration)
 		case m := <-c.messages:
@@ -221,7 +218,7 @@ STOP:
 	atomic.StoreInt32(&c.state, stateClosed)
 	close(c.messages)
 	_ = c.conn.Close()
-	logger.D("client write closed, uid=%v", c.info.ID)
+	logger.D("write closed, id=%s", c.info.ID)
 }
 
 // handleError 处理上下行消息过程中的错误, 如果是致命错误, 则返回 true
@@ -230,10 +227,7 @@ func (c *Client) handleError(err error) bool {
 		logger.E("handle message error: %s", err.Error())
 	}
 	if c.logged {
-		err = c.mgr.ExitClient(c.info.ID)
-		if err != nil {
-			logger.E("%v", err)
-		}
+		_ = c.mgr.ExitClient(c.info.ID)
 	}
 	return true
 }
@@ -255,13 +249,8 @@ func (c *Client) Exit() {
 	_ = c.mgr.ExitClient(c.info.ID)
 }
 
-// getNextSeq 获取下一个下行消息序列号 sequence
-func (c *Client) getNextSeq() int64 {
-	return atomic.AddInt64(&c.seq, 1)
-}
-
 func (c *Client) Run() {
-	logger.I(">>>> client %s running, id=%v", c.conn.GetConnInfo().Addr, c.info.ID)
+	logger.I("new client running addr:%s id:%s", c.conn.GetConnInfo().Addr, c.info.ID)
 	go c.readMessage()
 	go c.writeMessage()
 }
