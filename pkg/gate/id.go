@@ -14,7 +14,7 @@ func GenTempID(gateID string) (ID, error) {
 	if err != nil {
 		return "", err
 	}
-	return NewID(gateID, tempIdPrefix+uuid, 0), nil
+	return NewID(gateID, tempIdPrefix+uuid, ""), nil
 }
 
 func newUUID() (string, error) {

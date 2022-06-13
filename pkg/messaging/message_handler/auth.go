@@ -6,7 +6,6 @@ import (
 	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
-	"strconv"
 )
 
 type AuthRequest struct {
@@ -24,7 +23,7 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 
 	info := jwt_auth.JwtAuthInfo{
 		UID:    msg.From,
-		Device: strconv.FormatInt(c.ID.Device(), 10),
+		Device: c.ID.Device(),
 	}
 	r, err := d.auth.Auth(&info, &t)
 

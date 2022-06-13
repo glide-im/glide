@@ -4,8 +4,8 @@ package messages
 type ChatMessage struct {
 	Mid     int64  `json:"mid"`
 	Seq     int64  `json:"seq"`
-	From    int64  `json:"from"`
-	To      int64  `json:"to"`
+	From    string `json:"from"`
+	To      string `json:"to"`
 	Type    int32  `json:"type"`
 	Content string `json:"content"`
 	SendAt  int64  `json:"sendAt"`

@@ -5,7 +5,6 @@ import (
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/subscription"
-	"strconv"
 )
 
 // handleGroupMsg 分发群消息
@@ -15,14 +14,10 @@ func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage
 	if !d.unwrap(c, msg, groupMsg) {
 		return nil
 	}
-	from, err := strconv.ParseInt(c.ID.UID(), 10, 64)
-	if err != nil {
-		return err
-	}
-	groupMsg.From = from
+	groupMsg.From = msg.From
 
-	id := subscription.ChanID(strconv.FormatInt(groupMsg.To, 10))
-	err = d.def.GetGroupInterface().PublishMessage(id, groupMsg)
+	id := subscription.ChanID(msg.To)
+	err := d.def.GetGroupInterface().PublishMessage(id, groupMsg)
 
 	if err != nil {
 		logger.E("dispatch group message error: %v", err)

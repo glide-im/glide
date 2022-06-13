@@ -290,7 +290,7 @@ func (g *Group) sendMessage(message *PublishMessage) {
 		if !mf.online || subscriberID == message.From {
 			continue
 		}
-		err := g.gate.EnqueueMessage(gate.NewID2(subscriberID), message.Message)
+		err := g.gate.EnqueueMessage(gate.ID(subscriberID), message.Message)
 		if err != nil {
 			logger.E("%v", err)
 		}

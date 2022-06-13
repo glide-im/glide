@@ -6,7 +6,6 @@ import (
 	"github.com/glide-im/glide/internal/config"
 	"github.com/glide-im/glide/pkg/messages"
 	_ "github.com/go-sql-driver/mysql"
-	"strconv"
 	"time"
 )
 
@@ -33,7 +32,7 @@ func (D *ChatMessageStore) StoreMessage(m *messages.ChatMessage) error {
 	if lg < sm {
 		lg, sm = sm, lg
 	}
-	sid := strconv.FormatInt(lg, 10) + "_" + strconv.FormatInt(sm, 10)
+	sid := lg + "_" + sm
 
 	// mysql only
 	_, err := D.db.Exec(

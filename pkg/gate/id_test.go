@@ -11,6 +11,5 @@ func TestGenTempID(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.NotEmpty(t, id)
-	assert.Equal(t, id.UID(), int64(-1))
 	assert.True(t, id.IsTemp())
 }

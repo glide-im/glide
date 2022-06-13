@@ -4,7 +4,6 @@ import (
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
-	"strconv"
 )
 
 // handleChatMessage 分发用户单聊消息
@@ -13,11 +12,8 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 	if !d.unwrap(c, m, msg) {
 		return nil
 	}
-	from, err := strconv.ParseInt(c.ID.UID(), 10, 64)
-	if err != nil {
-		return err
-	}
-	msg.From = from
+	msg.From = m.From
+	msg.To = m.To
 
 	// 保存消息
 	if m.GetAction() != messages.ActionChatMessageResend {
@@ -68,11 +64,7 @@ func (d *MessageHandler) dispatchOffline(c *gate.Info, message *messages.GlideMe
 // dispatchOnline 接收者在线, 直接投递消息
 func (d *MessageHandler) dispatchOnline(c *gate.Info, msg *messages.ChatMessage) error {
 	receiverMsg := msg
-	from, err := strconv.ParseInt(c.ID.UID(), 10, 64)
-	if err != nil {
-		return err
-	}
-	msg.From = from
+	msg.From = c.ID.UID()
 	dispatchMsg := messages.NewMessage(-1, messages.ActionChatMessage, receiverMsg)
 	return d.def.GetClientInterface().EnqueueMessage(c.ID, dispatchMsg)
 }

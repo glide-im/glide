@@ -18,6 +18,8 @@ var _ gate.Gateway = (*Impl)(nil)
 type Impl struct {
 	gate.Gateway
 
+	id string
+
 	// clients is a map of all connected clients
 	clients map[gate.ID]gate.Client
 	mu      sync.RWMutex
@@ -58,6 +60,9 @@ func (c *Impl) SetClientID(oldID, newID gate.ID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	oldID.SetGateway(c.id)
+	newID.SetGateway(c.id)
+
 	cli, ok := c.clients[oldID]
 	if !ok || cli == nil {
 		return errors.New(errClientNotExist)
@@ -77,6 +82,8 @@ func (c *Impl) ExitClient(id gate.ID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	id.SetGateway(c.id)
+
 	cli, ok := c.clients[id]
 	if !ok || cli == nil {
 		return errors.New(errClientNotExist)
@@ -94,6 +101,7 @@ func (c *Impl) EnqueueMessage(id gate.ID, msg *messages.GlideMessage) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
+	id.SetGateway(c.id)
 	cli, ok := c.clients[id]
 	if !ok || cli == nil {
 		return errors.New(errClientNotExist)
@@ -116,5 +124,9 @@ func (c *Impl) enqueueMessage(cli gate.Client, msg *messages.GlideMessage) error
 }
 
 func (c *Impl) IsOnline(id gate.ID) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	id.SetGateway(c.id)
 	return c.clients[id] != nil
 }
