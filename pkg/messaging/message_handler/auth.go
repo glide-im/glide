@@ -5,6 +5,7 @@ import (
 	"github.com/glide-im/glide/pkg/auth"
 	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/gate"
+	"github.com/glide-im/glide/pkg/gate/gateway"
 	"github.com/glide-im/glide/pkg/messages"
 )
 
@@ -36,7 +37,14 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 			return errors.New("invalid response type: expected *jwt_auth.Response")
 		}
 		id2 := gate.NewID("", jwtResp.Uid, jwtResp.Device)
-		_ = d.def.GetClientInterface().SetClientID(c.ID, id2)
+		err = d.def.GetClientInterface().SetClientID(c.ID, id2)
+		if gateway.IsAlreadyExist(err) {
+			_ = d.def.GetClientInterface().ExitClient(id2)
+			err = d.def.GetClientInterface().SetClientID(c.ID, id2)
+		}
+		if gateway.IsClientNotExist(err) {
+			return errors.New("auth client not exist")
+		}
 		d.enqueueMessage(id2, respMsg)
 	} else {
 		resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, r.Response)

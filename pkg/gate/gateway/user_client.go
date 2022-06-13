@@ -11,84 +11,137 @@ import (
 	"time"
 )
 
-// tw is a timer
+// tw is a timer for heartbeat.
 var tw = timingwheel.NewTimingWheel(time.Millisecond*500, 3, 20)
 
-// heartbeatDuration 心跳间隔
-const heartbeatDuration = time.Second * 20
-
 const (
-	_ = iota
+	defaultServerHeartbeatDuration = time.Second * 30
+	defaultHeartbeatDuration       = time.Second * 20
+	defaultHeartbeatLostLimit      = 3
+	defaultCloseImmediately        = false
+)
+
+// client state
+const (
+	_ int32 = iota
+	// stateRunning client is running, can read and write message.
 	stateRunning
+	// stateClosing client is closing, can't read and write message, wait for send all message in queue done.
 	stateClosing
+	// stateClosed client is closed, cannot do anything.
 	stateClosed
 )
 
-// Client represent a user conn conn
+// ClientConfig client config
+type ClientConfig struct {
+
+	// ClientHeartbeatDuration is the duration of heartbeat.
+	ClientHeartbeatDuration time.Duration
+
+	// ServerHeartbeatDuration is the duration of server heartbeat.
+	ServerHeartbeatDuration time.Duration
+
+	// HeartbeatLostLimit is the max lost heartbeat count.
+	HeartbeatLostLimit int
+
+	// CloseImmediately true express when client exit, discard all message in queue, and close connection immediately,
+	// otherwise client will close read, and mark as stateClosing, the client cannot receive and enqueue message,
+	// after all message in queue is sent, client will close write and connection.
+	CloseImmediately bool
+}
+
+// Client represent a user conn client.
 type Client struct {
 
-	// conn is the connection
+	// conn is the real connection
 	conn conn.Connection
 
-	logged    bool
+	// logged true if client has logged
+	logged bool
+	// connectAt is the time when client connected
 	connectAt time.Time
-	// state client 状态
+	// state is the client state
 	state int32
 
-	// queuedMessage messages in the queue
+	// queuedMessage message count in the messages channel
 	queuedMessage int64
-	// messages 带缓冲的下行消息管道, 缓冲大小40
+	// messages is the buffered channel for message to push to client.
 	messages chan *messages.GlideMessage
-	// rCloseCh 关闭或写入则停止读
-	rCloseCh   chan struct{}
-	readClosed int32
 
-	// hbR 心跳倒计时
-	hbR    *timingwheel.Task
+	// rCloseCh is the channel for read goroutine to close
+	rCloseCh chan struct{}
+	// wCloseCh is the channel for write goroutine to close
+	wCloseCh chan struct{}
+	// readClosed flag for read goroutine closed, non-zero means closed
+	readClosed int32
+	// writeClosed flag for write goroutine closed, non-zero means closed
+	writeClosed int32
+
+	// hbC is the timer for client heartbeat
+	hbC *timingwheel.Task
+	// hbS is the timer for server heartbeat
+	hbS *timingwheel.Task
+	// hbLost is the count of heartbeat lost
 	hbLost int
 
-	hbW *timingwheel.Task
-
+	// info is the client info
 	info *gate.Info
 
 	// mgr the client manager which manage this client
 	mgr gate.Gateway
 	// msgHandler client message handler
 	msgHandler gate.MessageHandler
+
+	// config is the client config
+	config *ClientConfig
 }
 
-func NewClient(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandler) *Client {
+func NewClientWithConfig(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandler, config *ClientConfig) *Client {
+	if config == nil {
+		config = &ClientConfig{
+			ClientHeartbeatDuration: defaultHeartbeatDuration,
+			ServerHeartbeatDuration: defaultServerHeartbeatDuration,
+			HeartbeatLostLimit:      defaultHeartbeatLostLimit,
+			CloseImmediately:        false,
+		}
+	}
 	ret := new(Client)
 	ret.conn = conn
 	ret.state = stateRunning
-	// 大小为 40 的缓冲管道, 防止短时间消息过多如果网络连接 output 不及时会造成程序阻塞, 可以适当调整
 	ret.messages = make(chan *messages.GlideMessage, 60)
 	ret.connectAt = time.Now()
 	ret.rCloseCh = make(chan struct{})
-	ret.hbR = tw.After(heartbeatDuration)
-	ret.hbW = tw.After(heartbeatDuration)
+	ret.wCloseCh = make(chan struct{})
+	ret.hbC = tw.After(config.ClientHeartbeatDuration)
+	ret.hbS = tw.After(config.ServerHeartbeatDuration)
+	ret.hbLost = 0
 	ret.info = &gate.Info{
 		ConnectionAt: time.Now().Unix(),
 		CliAddr:      conn.GetConnInfo().Addr,
 	}
 	ret.mgr = mgr
 	ret.msgHandler = handler
+	ret.config = config
 	return ret
+}
+
+func NewClient(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandler) *Client {
+	return NewClientWithConfig(conn, mgr, handler, nil)
 }
 
 func (c *Client) GetInfo() gate.Info {
 	return *c.info
 }
 
-// SetID 设置 id 标识及设备标识
+// SetID set client id.
 func (c *Client) SetID(id gate.ID) {
-
-	if id == "" {
+	if id == "" || id.IsTemp() {
 		c.logged = false
 	}
 	c.info.ID = id
 }
 
+// IsRunning return true if client is running
 func (c *Client) IsRunning() bool {
 	return atomic.LoadInt32(&c.state) == stateRunning
 }
@@ -97,7 +150,7 @@ func (c *Client) Logged() bool {
 	return c.logged
 }
 
-// EnqueueMessage 放入下行消息队列
+// EnqueueMessage enqueue message to client message queue.
 func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
 	atomic.AddInt64(&c.queuedMessage, 1)
 	defer func() {
@@ -116,14 +169,13 @@ func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
 	case c.messages <- msg:
 	default:
 		atomic.AddInt64(&c.queuedMessage, -1)
-		// 消息 chan 缓冲溢出, 这条消息将被丢弃
 		logger.E("msg chan is full, id=%v", c.info.ID)
 	}
 	return nil
 }
 
-// readMessage 开始从 Connection 中读取消息
-func (c *Client) readMessage() {
+// read message from client.
+func (c *Client) read() {
 	readChan, done := messageReader.ReadCh(c.conn)
 
 	defer func() {
@@ -133,32 +185,34 @@ func (c *Client) readMessage() {
 		}
 	}()
 
+	var closeReason string
 	atomic.StoreInt32(&c.readClosed, 0)
 	for {
 		select {
 		case <-c.rCloseCh:
-			close(c.rCloseCh)
+			closeReason = "closed initiative"
 			goto STOP
-		case <-c.hbR.C:
+		case <-c.hbC.C:
 			c.hbLost++
-			if c.hbLost > 3 {
+			if c.hbLost > c.config.HeartbeatLostLimit {
+				closeReason = "heartbeat lost"
 				goto STOP
 			}
 			// reset client heartbeat
-			c.hbR.Cancel()
-			c.hbR = tw.After(heartbeatDuration)
-			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, ""))
+			c.hbC.Cancel()
+			c.hbC = tw.After(c.config.ClientHeartbeatDuration)
+			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, nil))
 		case msg := <-readChan:
 			if msg.err != nil {
 				if !c.IsRunning() || c.handleError(msg.err) {
-					// 连接断开或致命错误中断读消息
+					closeReason = "read error, " + msg.err.Error()
 					goto STOP
 				}
 				continue
 			}
 			c.hbLost = 0
-			c.hbR.Cancel()
-			c.hbR = tw.After(heartbeatDuration)
+			c.hbC.Cancel()
+			c.hbC = tw.After(c.config.ClientHeartbeatDuration)
 
 			if msg.m.GetAction() == messages.ActionHello {
 				data := msg.m.Data
@@ -170,21 +224,21 @@ func (c *Client) readMessage() {
 					c.info.Version = hello.ClientVersion
 				}
 			} else {
-				// 统一处理消息函数
 				c.msgHandler(c.info, msg.m)
 			}
 			msg.Recycle()
 		}
 	}
 STOP:
-	c.hbR.Cancel()
+	c.hbC.Cancel()
 	atomic.StoreInt32(&c.readClosed, 1)
 	close(done)
-	logger.D("read closed id=%s", c.info.ID)
+	close(c.rCloseCh)
+	logger.I("read message goroutine closed, reason=%s", closeReason)
 }
 
-// writeMessage 开始向 Connection 中写入消息队列中的消息
-func (c *Client) writeMessage() {
+// write message to client.
+func (c *Client) write() {
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -195,16 +249,20 @@ func (c *Client) writeMessage() {
 		}
 	}()
 
+	var closeReason string
 	for {
 		select {
-		case <-c.hbW.C:
+		case <-c.wCloseCh:
+			closeReason = "closed initiative"
+			goto STOP
+		case <-c.hbS.C:
 			if !c.IsRunning() {
-				logger.D("read closed, down msg queue timeout, close write now, id=%v", c.info.ID)
+				closeReason = "client is not active"
 				goto STOP
 			}
 			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, ""))
-			c.hbW.Cancel()
-			c.hbW = tw.After(heartbeatDuration)
+			c.hbS.Cancel()
+			c.hbS = tw.After(c.config.ServerHeartbeatDuration)
 		case m := <-c.messages:
 			b, err := codec.Encode(m)
 			if err != nil {
@@ -214,54 +272,76 @@ func (c *Client) writeMessage() {
 			err = c.conn.Write(b)
 			atomic.AddInt64(&c.queuedMessage, -1)
 
-			c.hbW.Cancel()
-			c.hbW = tw.After(heartbeatDuration)
+			c.hbS.Cancel()
+			c.hbS = tw.After(c.config.ServerHeartbeatDuration)
 			if err != nil {
 				if !c.IsRunning() || c.handleError(err) {
-					// 连接断开或致命错误中断写消息
+					closeReason = "write error, " + err.Error()
 					goto STOP
 				}
 			}
 		}
 	}
 STOP:
-	c.Exit()
 	atomic.StoreInt32(&c.state, stateClosed)
-	close(c.messages)
-	_ = c.conn.Close()
-	logger.D("write closed, id=%s", c.info.ID)
+	atomic.StoreInt32(&c.writeClosed, 1)
+	close(c.wCloseCh)
+
+	if !c.config.CloseImmediately {
+		close(c.messages)
+		_ = c.conn.Close()
+	}
+
+	logger.D("client closed, addr=%s, reason:%s", c.info.CliAddr, closeReason)
 }
 
-// handleError 处理上下行消息过程中的错误, 如果是致命错误, 则返回 true
+// handleError handle error, return true if client should exit.
 func (c *Client) handleError(err error) bool {
 	if conn.ErrClosed != err {
 		logger.E("handle message error: %s", err.Error())
 	}
-	if c.logged {
-		_ = c.mgr.ExitClient(c.info.ID)
-	}
 	return true
 }
 
-// Exit 退出客户端
+// Exit client, note: exit client will not close conn right now, but will close when message chan is empty.
+// It's close read right now, and close write when all message in queue is sent.
 func (c *Client) Exit() {
+	if c.logged {
+		c.logged = false
+	}
+	if c.mgr != nil {
+		mgr := c.mgr
+		c.mgr = nil
+		_ = mgr.ExitClient(c.info.ID)
+	}
+
 	c.SetID("")
 
-	s := atomic.LoadInt32(&c.state)
-	if s == stateClosed || s == stateClosing {
+	// discard all message in queue and close connection immediately
+	if c.config.CloseImmediately && atomic.LoadInt32(&c.state) != stateClosed {
+		atomic.StoreInt32(&c.state, stateClosed)
+		if atomic.LoadInt32(&c.readClosed) == 0 {
+			c.rCloseCh <- struct{}{}
+		}
+		if atomic.LoadInt32(&c.writeClosed) == 0 {
+			c.wCloseCh <- struct{}{}
+		}
+		close(c.messages)
+		_ = c.conn.Close()
+	}
+
+	if atomic.LoadInt32(&c.state) == stateClosed || atomic.LoadInt32(&c.state) == stateClosing {
 		return
 	}
 	atomic.StoreInt32(&c.state, stateClosing)
 
-	if atomic.LoadInt32(&c.readClosed) != 1 {
+	if atomic.LoadInt32(&c.readClosed) == 0 {
 		c.rCloseCh <- struct{}{}
 	}
-
-	_ = c.mgr.ExitClient(c.info.ID)
 }
 
 func (c *Client) Run() {
 	logger.I("new client running addr:%s id:%s", c.conn.GetConnInfo().Addr, c.info.ID)
-	go c.readMessage()
-	go c.writeMessage()
+	go c.read()
+	go c.write()
 }

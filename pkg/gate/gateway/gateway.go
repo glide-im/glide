@@ -10,6 +10,9 @@ import (
 )
 
 type Options struct {
+	// ID is the gateway id.
+	ID string
+	// MaxMessageConcurrency is the max message concurrency.
 	MaxMessageConcurrency int
 }
 
@@ -36,6 +39,7 @@ func NewServer(options *Options) (*Impl, error) {
 	ret := new(Impl)
 	ret.clients = map[gate.ID]gate.Client{}
 	ret.mu = sync.RWMutex{}
+	ret.id = options.ID
 
 	pool, err := ants.NewPool(options.MaxMessageConcurrency,
 		ants.WithNonblocking(true),
@@ -56,6 +60,9 @@ func (c *Impl) AddClient(cs gate.Client) {
 	c.clients[id] = cs
 }
 
+// SetClientID replace the oldID with newID of the client.
+// If the oldID is not exist, return errClientNotExist.
+// If the newID is existed, return errClientAlreadyExist.
 func (c *Impl) SetClientID(oldID, newID gate.ID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -67,8 +74,8 @@ func (c *Impl) SetClientID(oldID, newID gate.ID) error {
 	if !ok || cli == nil {
 		return errors.New(errClientNotExist)
 	}
-	cliLogged, logged := c.clients[newID]
-	if logged && cliLogged != nil {
+	cliLogged, exist := c.clients[newID]
+	if exist && cliLogged != nil {
 		return errors.New(errClientAlreadyExist)
 	}
 
@@ -78,6 +85,8 @@ func (c *Impl) SetClientID(oldID, newID gate.ID) error {
 	return nil
 }
 
+// ExitClient close the client with the specified id.
+// If the client is not exist, return errClientNotExist.
 func (c *Impl) ExitClient(id gate.ID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -95,7 +104,7 @@ func (c *Impl) ExitClient(id gate.ID) error {
 	return nil
 }
 
-// EnqueueMessage to the client with the specified uid and device, device: pass 0 express all device.
+// EnqueueMessage to the client with the specified id.
 func (c *Impl) EnqueueMessage(id gate.ID, msg *messages.GlideMessage) error {
 
 	c.mu.RLock()

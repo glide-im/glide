@@ -24,11 +24,16 @@ func NewMessage(seq int64, action Action, data interface{}) *GlideMessage {
 		Seq:    seq,
 		Action: string(action),
 		Data:   NewData(data),
+		Extra:  nil,
 	}
 }
 
 func NewEmptyMessage() *GlideMessage {
-	return &GlideMessage{}
+	return &GlideMessage{
+		Ver:   messageVersion,
+		Data:  nil,
+		Extra: nil,
+	}
 }
 
 func (g *GlideMessage) GetSeq() int64 {
@@ -47,7 +52,7 @@ func (g *GlideMessage) String() string {
 	if g == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("&Message{Ver:%d, Action:%s, Data:%s Extra:%s}", g.Ver, g.Action, g.Data, g.Extra)
+	return fmt.Sprintf("&Message{Ver:%d, Action:%s, Data:%s}", g.Ver, g.Action, g.Data)
 }
 
 // Data used to wrap message data.
@@ -93,7 +98,11 @@ func (d *Data) String() string {
 	if ok {
 		s = string(b)
 	} else {
-		s = d.des
+		if d.des == nil {
+			s = "<nil>"
+		} else {
+			s = d.des
+		}
 	}
 	return fmt.Sprintf("%s", s)
 }
