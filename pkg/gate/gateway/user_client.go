@@ -160,8 +160,19 @@ func (c *Client) readMessage() {
 			c.hbR.Cancel()
 			c.hbR = tw.After(heartbeatDuration)
 
-			// 统一处理消息函数
-			c.msgHandler(c.info, msg.m)
+			if msg.m.GetAction() == messages.ActionHello {
+				data := msg.m.Data
+				hello := messages.Hello{}
+				err := data.Deserialize(&hello)
+				if err != nil {
+					_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid hello message"))
+				} else {
+					c.info.Version = hello.ClientVersion
+				}
+			} else {
+				// 统一处理消息函数
+				c.msgHandler(c.info, msg.m)
+			}
 			msg.Recycle()
 		}
 	}

@@ -3,11 +3,13 @@ package messages
 type Action string
 
 const (
-	ActionChatMessage       Action = "message.chat"
-	ActionChatMessageResend        = "message.chat.resend"
-	ActionGroupMessage             = "message.group"
-	ActionMessageFailed            = "message.failed.send"
-	ActionClientCustom             = "message.cli"
+	ActionHello Action = "hello"
+
+	ActionChatMessage       = "message.chat"
+	ActionChatMessageResend = "message.chat.resend"
+	ActionGroupMessage      = "message.group"
+	ActionMessageFailed     = "message.failed.send"
+	ActionClientCustom      = "message.cli"
 
 	ActionNotifyNeedAuth      = "notify.auth"
 	ActionNotifyKickOut       = "notify.kickout"

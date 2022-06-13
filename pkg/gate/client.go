@@ -71,6 +71,9 @@ type Info struct {
 	// ID is the unique identifier for the client.
 	ID ID
 
+	// Version is the version of the client.
+	Version string
+
 	// AliveAt is the time the client was last seen.
 	AliveAt int64
 
