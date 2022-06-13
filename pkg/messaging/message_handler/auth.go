@@ -22,13 +22,8 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 		return nil
 	}
 
-	from, err := strconv.ParseInt(c.ID.UID(), 10, 64)
-	if err != nil {
-		return err
-	}
-
 	info := jwt_auth.JwtAuthInfo{
-		UID:    strconv.FormatInt(from, 10),
+		UID:    msg.From,
 		Device: strconv.FormatInt(c.ID.Device(), 10),
 	}
 	r, err := d.auth.Auth(&info, &t)
