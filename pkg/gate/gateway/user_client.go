@@ -210,6 +210,9 @@ func (c *Client) read() {
 				}
 				continue
 			}
+			if c.info.ID == "" {
+				continue
+			}
 			c.hbLost = 0
 			c.hbC.Cancel()
 			c.hbC = tw.After(c.config.ClientHeartbeatDuration)

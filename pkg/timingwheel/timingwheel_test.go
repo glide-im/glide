@@ -2,9 +2,9 @@ package timingwheel
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 )
@@ -12,53 +12,9 @@ import (
 func TestNewTimingWheel(t *testing.T) {
 
 	tw := NewTimingWheel(time.Millisecond*100, 3, 20)
-	runAt := time.Now()
-	tk := time.NewTicker(time.Millisecond * 1000)
-
-	status := func() {
-		var w = tw.wheel
-		for w != nil {
-			//t.Log(w.status())
-			w = w.child
-		}
-	}
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		//sleepRndMilleSec(1000, 2000)
-		time.Sleep(time.Second * 3)
-		for i := 0; i < 10000; i++ {
-			wg.Add(1)
-			go func() {
-				sleepRndMilleSec(1000, 10000)
-				tas := tw.After(time.Second * time.Duration(rand.Int63n(20)))
-				after := tas.at.Unix() - time.Now().Unix()
-				addAt := (time.Now().UnixNano() - runAt.UnixNano()) / int64(time.Millisecond)
-				<-tas.C
-				ttl := tas.TTL()
-				if ttl > 100 {
-					//t.Log("addAt=", addAt, "after=", after, "error=", err, "run=", time.Now().Unix()-runAt.Unix())
-					t.Log("after:", after, "error:", ttl, addAt)
-				} else {
-					//t.Log("after:", after, "error:", "0")
-				}
-				wg.Done()
-			}()
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		for {
-			select {
-			case <-tk.C:
-				//t.Log("---------------------------------------------------------------------------")
-				status()
-			}
-		}
-	}()
-	wg.Wait()
+	assert.NotNil(t, tw)
+	assert.Equal(t, 20, tw.wheel.slot.len)
+	assert.Equal(t, 400, tw.wheel.slotCap)
 }
 
 func (s *slot) tasks() [][]*Task {

@@ -32,6 +32,8 @@ type Impl struct {
 
 	// pool of ants, used to process messages concurrently.
 	pool *ants.Pool
+
+	emptyInfo *gate.Info
 }
 
 func NewServer(options *Options) (*Impl, error) {
@@ -40,6 +42,9 @@ func NewServer(options *Options) (*Impl, error) {
 	ret.clients = map[gate.ID]gate.Client{}
 	ret.mu = sync.RWMutex{}
 	ret.id = options.ID
+	ret.emptyInfo = &gate.Info{
+		ID: gate.NewID(ret.id, "", ""),
+	}
 
 	pool, err := ants.NewPool(options.MaxMessageConcurrency,
 		ants.WithNonblocking(true),
@@ -58,6 +63,7 @@ func NewServer(options *Options) (*Impl, error) {
 func (c *Impl) AddClient(cs gate.Client) {
 	id := cs.GetInfo().ID
 	c.clients[id] = cs
+	c.msgHandler(nil, messages.NewMessage(0, messages.ActionInternalOnline, id))
 }
 
 // SetClientID replace the oldID with newID of the client.
@@ -81,6 +87,9 @@ func (c *Impl) SetClientID(oldID, newID gate.ID) error {
 
 	cli.SetID(newID)
 	delete(c.clients, oldID)
+	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOffline, oldID))
+	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOnline, newID))
+
 	c.clients[newID] = cli
 	return nil
 }
@@ -99,6 +108,7 @@ func (c *Impl) ExitClient(id gate.ID) error {
 	}
 
 	delete(c.clients, id)
+	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOffline, id))
 	cli.Exit()
 
 	return nil

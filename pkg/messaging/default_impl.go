@@ -57,16 +57,18 @@ func NewDefaultImpl(store store.MessageStore) (*MessageInterfaceImpl, error) {
 
 func (d *MessageInterfaceImpl) Handle(cInfo *gate.Info, msg *messages.GlideMessage) error {
 
-	if cInfo.ID == "" || cInfo.ID.UID() == "" {
-		return errors.New("unauthorized")
+	if !msg.GetAction().IsInternal() {
+		msg.From = cInfo.ID.UID()
 	}
-	msg.From = cInfo.ID.UID()
-	logger.D("new message: id=%v", cInfo.ID)
+	logger.D("handle message: %s", msg)
 	err := d.execPool.Submit(func() {
 		handled := d.hc.handle(d, cInfo, msg)
 		if !handled {
-			r := messages.NewMessage(msg.GetSeq(), messages.ActionNotifyUnknownAction, msg.GetAction())
-			_ = d.gate.EnqueueMessage(cInfo.ID, r)
+			if !msg.GetAction().IsInternal() {
+				r := messages.NewMessage(msg.GetSeq(), messages.ActionNotifyUnknownAction, msg.GetAction())
+				_ = d.gate.EnqueueMessage(cInfo.ID, r)
+			}
+			logger.W("action is not handled: %s", msg.GetAction())
 		}
 	})
 	if err != nil {

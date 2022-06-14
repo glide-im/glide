@@ -12,7 +12,7 @@ func TestGlideMessage_Decode(t *testing.T) {
 		Type:    3,
 		Content: "-",
 	}
-	message := NewMessage(1, ActionChatMessage, &cm)
+	message := NewMessage(1, ActionHeartbeat, &cm)
 	bytes, err := JsonCodec.Encode(message)
 	assert.Nil(t, err)
 

@@ -1,9 +1,14 @@
 package messages
 
+import "strings"
+
+// Action is the type of action that is being performed.
 type Action string
 
 const (
-	ActionHello Action = "hello"
+	ActionHello               Action = "hello"
+	ActionHeartbeat                  = "heartbeat"
+	ActionNotifyUnknownAction        = "notify.unknown.action"
 
 	ActionChatMessage       = "message.chat"
 	ActionChatMessageResend = "message.chat.resend"
@@ -18,15 +23,20 @@ const (
 	ActionNotifyAccountLogin  = "notify.login"
 	ActionNotifyAccountLogout = "notify.logout"
 	ActionNotifyError         = "notify.error"
-	ActionNotifyUnknownAction = "notify.unknown.action"
 
 	ActionAckRequest  = "ack.request"
 	ActionAckGroupMsg = "ack.group.msg"
 	ActionAckMessage  = "ack.message"
 	ActionAckNotify   = "ack.notify"
 
-	ActionHeartbeat  = "heartbeat"
 	ActionApiAuth    = "api.auth"
 	ActionApiFailed  = "api.failed"
 	ActionApiSuccess = "api.success"
+
+	ActionInternalOnline  = "internal.online"
+	ActionInternalOffline = "internal.offline"
 )
+
+func (a Action) IsInternal() bool {
+	return strings.HasPrefix(string(a), "internal.")
+}
