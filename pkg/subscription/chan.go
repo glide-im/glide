@@ -1,15 +1,13 @@
 package subscription
 
-import "errors"
-
 //goland:noinspection GoUnusedGlobalVariable
 var (
-	ErrChanNotExist      = errors.New("channel does not exist")
-	ErrChanAlreadyExists = errors.New("channel already exists")
-	ErrChanClosed        = errors.New("subscribe channel is closed")
-	ErrAlreadySubscribed = errors.New("already subscribed")
-	ErrNotSubscribed     = errors.New("not subscribed")
-	ErrNotPublisher      = errors.New("not publisher")
+	ErrChanNotExist      = "channel does not exist"
+	ErrChanAlreadyExists = "channel already exists"
+	ErrChanClosed        = "subscribe channel is closed"
+	ErrAlreadySubscribed = "already subscribed"
+	ErrNotSubscribed     = "not subscribed"
+	ErrNotPublisher      = "not publisher"
 )
 
 type Subscriber struct {
@@ -28,7 +26,7 @@ type Channel interface {
 
 	UpdateSubscribe(id SubscriberID, extra interface{}) error
 
-	Update(extra interface{}) error
+	Update(i *ChanInfo) error
 
 	Publish(msg Message) error
 

@@ -17,11 +17,12 @@ type subscriptionImpl struct {
 	unwrap *realSubscription
 }
 
-func NewSubscription(store store.SubscriptionStore) subscription.Interface {
+func NewSubscription(store store.SubscriptionStore) subscription.Subscribe {
 	return &subscriptionImpl{
 		store: store,
 		unwrap: &realSubscription{
-			store: store,
+			channels: make(map[subscription.ChanID]subscription.Channel),
+			store:    store,
 		},
 	}
 }
@@ -88,10 +89,6 @@ func (s *subscriptionImpl) SetGateInterface(g gate.Interface) {
 	s.unwrap.gate = g
 }
 
-func NewServer() (*subscriptionImpl, error) {
-	return &subscriptionImpl{}, nil
-}
-
 var _ SubscribeWrap = (*realSubscription)(nil)
 
 type realSubscription struct {
@@ -107,7 +104,7 @@ func (u *realSubscription) Subscribe(chID subscription.ChanID, sbID subscription
 
 	ch, ok := u.channels[chID]
 	if !ok {
-		return subscription.ErrChanNotExist
+		return errors.New(subscription.ErrChanNotExist)
 	}
 	return ch.Subscribe(sbID, extra)
 }
@@ -118,7 +115,7 @@ func (u *realSubscription) UnSubscribe(chID subscription.ChanID, id subscription
 
 	ch, ok := u.channels[chID]
 	if !ok {
-		return subscription.ErrChanNotExist
+		return errors.New(subscription.ErrChanNotExist)
 	}
 
 	return ch.Unsubscribe(id)
@@ -130,7 +127,7 @@ func (u *realSubscription) UpdateSubscriber(chID subscription.ChanID, id subscri
 
 	ch, ok := u.channels[chID]
 	if !ok {
-		return subscription.ErrChanNotExist
+		return errors.New(subscription.ErrChanNotExist)
 	}
 	return ch.UpdateSubscribe(id, update)
 }
@@ -141,7 +138,7 @@ func (u *realSubscription) RemoveChannel(chID subscription.ChanID) error {
 
 	_, ok := u.channels[chID]
 	if !ok {
-		return subscription.ErrChanNotExist
+		return errors.New(subscription.ErrChanNotExist)
 	}
 	delete(u.channels, chID)
 	return nil
@@ -152,7 +149,7 @@ func (u *realSubscription) CreateChannel(chID subscription.ChanID, update *subsc
 	defer u.mu.Unlock()
 
 	if _, ok := u.channels[chID]; ok {
-		return subscription.ErrChanAlreadyExists
+		return errors.New(subscription.ErrChanAlreadyExists)
 	}
 
 	u.channels[chID] = newGroup(chID, 0)
@@ -166,19 +163,19 @@ func (u *realSubscription) UpdateChannel(chID subscription.ChanID, update *subsc
 
 	ch, ok := u.channels[chID]
 	if !ok {
-		return subscription.ErrChanNotExist
+		return errors.New(subscription.ErrChanNotExist)
 	}
 
 	return ch.Update(update)
 }
 
 func (u *realSubscription) Publish(chID subscription.ChanID, msg subscription.Message) error {
-	u.mu.RUnlock()
+	u.mu.RLock()
 	defer u.mu.RUnlock()
 
 	ch, ok := u.channels[chID]
 	if !ok {
-		return subscription.ErrChanNotExist
+		return errors.New(subscription.ErrChanNotExist)
 	}
 	return ch.Publish(msg)
 }

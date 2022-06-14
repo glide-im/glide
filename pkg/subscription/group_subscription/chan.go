@@ -100,8 +100,7 @@ func newGroup(chanID subscription.ChanID, seq int64) *Group {
 	return ret
 }
 
-func (g *Group) Update(extra interface{}) error {
-
+func (g *Group) Update(ci *subscription.ChanInfo) error {
 	return nil
 }
 
@@ -111,7 +110,7 @@ func (g *Group) Subscribe(id subscription.SubscriberID, extra interface{}) error
 
 	_, ok := g.members[id]
 	if ok {
-		return errors.New("already subscribed")
+		return errors.New(subscription.ErrAlreadySubscribed)
 	}
 	g.members[id] = newMemberInfo()
 	return nil

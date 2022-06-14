@@ -2,12 +2,13 @@ package group_subscription
 
 import "github.com/glide-im/glide/pkg/subscription"
 
+// SubscribeWrap the wrapper for subscription.Subscribe implementation, for convenience.
 type SubscribeWrap interface {
-	Subscribe(ch subscription.ChanID, id subscription.SubscriberID, update interface{}) error
+	Subscribe(ch subscription.ChanID, id subscription.SubscriberID, extra interface{}) error
 
 	UnSubscribe(ch subscription.ChanID, id subscription.SubscriberID) error
 
-	UpdateSubscriber(ch subscription.ChanID, id subscription.SubscriberID, update interface{}) error
+	UpdateSubscriber(ch subscription.ChanID, id subscription.SubscriberID, extra interface{}) error
 
 	RemoveChannel(ch subscription.ChanID) error
 
@@ -30,12 +31,12 @@ type wrap struct {
 	fac subscription.Subscribe
 }
 
-func (w *wrap) Subscribe(ch subscription.ChanID, id subscription.SubscriberID, role interface{}) error {
+func (w *wrap) Subscribe(ch subscription.ChanID, id subscription.SubscriberID, extra interface{}) error {
 	return w.fac.UpdateSubscriber(ch, []subscription.Update{
 		{
 			Flag:  subscription.SubscriberSubscribe,
 			ID:    id,
-			Extra: nil,
+			Extra: extra,
 		},
 	})
 }
@@ -50,12 +51,12 @@ func (w *wrap) UnSubscribe(ch subscription.ChanID, id subscription.SubscriberID)
 	})
 }
 
-func (w *wrap) UpdateSubscriber(ch subscription.ChanID, id subscription.SubscriberID, role interface{}) error {
+func (w *wrap) UpdateSubscriber(ch subscription.ChanID, id subscription.SubscriberID, extra interface{}) error {
 	return w.fac.UpdateSubscriber(ch, []subscription.Update{
 		{
 			Flag:  subscription.SubscriberUpdate,
 			ID:    id,
-			Extra: role,
+			Extra: extra,
 		},
 	})
 }

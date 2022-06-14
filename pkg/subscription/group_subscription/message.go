@@ -11,3 +11,7 @@ type PublishMessage struct {
 	Type    int
 	Message *messages.GlideMessage
 }
+
+func (p *PublishMessage) GetFrom() subscription.SubscriberID {
+	return p.From
+}
