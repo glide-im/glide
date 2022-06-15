@@ -9,6 +9,7 @@ import (
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/glide-im/glide/pkg/timingwheel"
 	"github.com/panjf2000/ants/v2"
+	"reflect"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -85,7 +86,7 @@ type Group struct {
 	gate  gate.Interface
 }
 
-func newGroup(chanID subscription.ChanID, seq int64) *Group {
+func NewGroup(chanID subscription.ChanID, seq int64) *Group {
 	ret := new(Group)
 	ret.mu = &sync.Mutex{}
 	ret.members = map[subscription.SubscriberID]*memberInfo{}
@@ -122,7 +123,7 @@ func (g *Group) Unsubscribe(id subscription.SubscriberID) error {
 
 	_, ok := g.members[id]
 	if !ok {
-		return errors.New("not subscribed")
+		return errors.New(subscription.ErrNotSubscribed)
 	}
 	delete(g.members, id)
 	return nil
@@ -134,7 +135,7 @@ func (g *Group) UpdateSubscribe(id subscription.SubscriberID, extra interface{})
 
 	info, ok := g.members[id]
 	if !ok {
-		return errors.New("not subscribed")
+		return errors.New(subscription.ErrNotSubscribed)
 	}
 	g.members[id] = info
 	return nil
@@ -144,15 +145,22 @@ func (g *Group) Publish(msg subscription.Message) error {
 
 	message, ok := msg.(*PublishMessage)
 	if !ok {
-		return errors.New("invalid message type, expect *subscription.PublishMessage")
+		return errors.New("unexpected message type, expect: *subscription.PublishMessage, actual:" + reflect.TypeOf(msg).String())
 	}
 
-	if message.From == "" {
+	if !isValidMessageType(message.Type) {
+		return errors.New(errUnknownMessageType)
+	}
+
+	switch message.Type {
+	case TypeNotify:
 		return g.EnqueueNotify(message)
+	case TypeMessage:
+		_, err := g.EnqueueMessage(message)
+		return err
+	default:
+		return errors.New(errUnknownMessageType)
 	}
-
-	_, err := g.EnqueueMessage(message)
-	return err
 }
 
 func (g *Group) Close() error {
@@ -235,50 +243,46 @@ func (g *Group) checkMsgQueue() error {
 	if atomic.LoadInt32(&g.queueRunning) == 1 {
 		return nil
 	}
-	err := queueExec.Submit(
-		func() {
-			atomic.StoreInt32(&g.queueRunning, 1)
-			logger.D("run a message queue reader goroutine")
-			g.checkActive = tw.After(messageQueueSleep)
-			for {
-				select {
-				case m := <-g.notify:
-					g.lastMsgAt = time.Now()
-					atomic.AddInt32(&g.queued, -1)
-					switch m.Type {
-					default:
-						g.sendMessage(m)
-					}
-					// 优先派送群通知消息
-					continue
-				case <-g.checkActive.C:
-					g.checkActive.Cancel()
-					if g.lastMsgAt.Add(messageQueueSleep).Before(time.Now()) {
-						q := atomic.LoadInt32(&g.queued)
-						if q != 0 {
-							logger.W("group message queue blocked, size=" + strconv.FormatInt(int64(q), 10))
-							return
-						}
-						// 超过三十分钟没有发消息了, 停止消息下行任务
-						goto REST
-					} else {
-						g.checkActive = tw.After(messageQueueSleep)
-					}
-				case m := <-g.messages:
-					atomic.AddInt32(&g.queued, -1)
-					g.lastMsgAt = time.Now()
+
+	go func() {
+		atomic.StoreInt32(&g.queueRunning, 1)
+		logger.D("run a message queue reader goroutine")
+		g.checkActive = tw.After(messageQueueSleep)
+		for {
+			select {
+			case m := <-g.notify:
+				g.lastMsgAt = time.Now()
+				atomic.AddInt32(&g.queued, -1)
+				switch m.Type {
+				default:
 					g.sendMessage(m)
 				}
+				// 优先派送群通知消息
+				continue
+			case <-g.checkActive.C:
+				g.checkActive.Cancel()
+				if g.lastMsgAt.Add(messageQueueSleep).Before(time.Now()) {
+					q := atomic.LoadInt32(&g.queued)
+					if q != 0 {
+						logger.W("group message queue blocked, size=" + strconv.FormatInt(int64(q), 10))
+						return
+					}
+					// 超过三十分钟没有发消息了, 停止消息下行任务
+					goto REST
+				} else {
+					g.checkActive = tw.After(messageQueueSleep)
+				}
+			case m := <-g.messages:
+				atomic.AddInt32(&g.queued, -1)
+				g.lastMsgAt = time.Now()
+				g.sendMessage(m)
 			}
-		REST:
-			logger.D("message queue read goroutine exit")
-			atomic.StoreInt32(&g.queueRunning, 0)
-		},
-	)
-	if err != nil {
+		}
+	REST:
+		logger.D("message queue read goroutine exit")
 		atomic.StoreInt32(&g.queueRunning, 0)
-	}
-	return err
+	}()
+	return nil
 }
 
 func (g *Group) sendMessage(message *PublishMessage) {

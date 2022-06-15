@@ -152,7 +152,7 @@ func (u *realSubscription) CreateChannel(chID subscription.ChanID, update *subsc
 		return errors.New(subscription.ErrChanAlreadyExists)
 	}
 
-	u.channels[chID] = newGroup(chID, 0)
+	u.channels[chID] = NewGroup(chID, 0)
 
 	return nil
 }
