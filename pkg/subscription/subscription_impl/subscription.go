@@ -11,19 +11,12 @@ import (
 var _ subscription.Subscribe = (*subscriptionImpl)(nil)
 
 type subscriptionImpl struct {
-	gate  gate.Interface
-	store store.SubscriptionStore
-
 	unwrap *realSubscription
 }
 
-func NewSubscription(store store.SubscriptionStore) subscription.Subscribe {
+func NewSubscription(store store.SubscriptionStore, seqStore ChannelSequenceStore) subscription.Subscribe {
 	return &subscriptionImpl{
-		store: store,
-		unwrap: &realSubscription{
-			channels: make(map[subscription.ChanID]subscription.Channel),
-			store:    store,
-		},
+		unwrap: newRealSubscription(store, seqStore),
 	}
 }
 
@@ -95,7 +88,17 @@ type realSubscription struct {
 	mu       sync.RWMutex
 	channels map[subscription.ChanID]subscription.Channel
 	store    store.SubscriptionStore
+	seqStore ChannelSequenceStore
 	gate     gate.Interface
+}
+
+func newRealSubscription(msgStore store.SubscriptionStore, seqStore ChannelSequenceStore) *realSubscription {
+	return &realSubscription{
+		mu:       sync.RWMutex{},
+		channels: make(map[subscription.ChanID]subscription.Channel),
+		store:    msgStore,
+		seqStore: seqStore,
+	}
 }
 
 func (u *realSubscription) Subscribe(chID subscription.ChanID, sbID subscription.SubscriberID, extra interface{}) error {
@@ -152,8 +155,11 @@ func (u *realSubscription) CreateChannel(chID subscription.ChanID, update *subsc
 		return errors.New(subscription.ErrChanAlreadyExists)
 	}
 
-	u.channels[chID] = NewGroup(chID, 0)
-
+	channel, err := NewChannel(chID, u.gate, u.store, u.seqStore)
+	if err != nil {
+		return err
+	}
+	u.channels[chID] = channel
 	return nil
 }
 

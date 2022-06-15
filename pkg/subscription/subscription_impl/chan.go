@@ -8,7 +8,6 @@ import (
 	"github.com/glide-im/glide/pkg/store"
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/glide-im/glide/pkg/timingwheel"
-	"github.com/panjf2000/ants/v2"
 	"reflect"
 	"strconv"
 	"sync"
@@ -16,58 +15,55 @@ import (
 	"time"
 )
 
-//SubscriberOptions is the options for the subscriber
-type SubscriberOptions struct {
-	Role string
-}
-
-type memberInfo struct {
-	online    bool
-	muted     bool
-	admin     bool
-	deletedAt int64
-}
-
-func newMemberInfo() *memberInfo {
-	return &memberInfo{
-		online:    false,
-		muted:     false,
-		admin:     false,
-		deletedAt: 0,
-	}
-}
-
 var tw = timingwheel.NewTimingWheel(time.Second, 3, 20)
-var queueExec *ants.Pool
 
 // group message sequence segment length
-const msgSeqSegmentLen = 200
+const defaultMsgSeqSegmentLen = 200
 
 const messageQueueSleep = time.Second * 10
 
-func init() {
-	var e error
-	queueExec, e = ants.NewPool(200000,
-		ants.WithNonblocking(true),
-		ants.WithPreAlloc(true),
-		ants.WithPanicHandler(onQueueExecutorPanic),
-	)
-	if e != nil {
-		panic(e)
+// ChannelSequenceStore .
+type ChannelSequenceStore interface {
+
+	// NextSegmentSequence return the next segment of specified channel, and segment length.
+	NextSegmentSequence(id subscription.ChanID, info subscription.ChanInfo) (int64, int64, error)
+}
+
+//SubscriberOptions is the options for the subscriber
+type SubscriberOptions struct {
+	Perm Permission
+}
+
+// getSubscriberOptions assertion type of `i` is *SubscribeOptions
+func getSubscriberOptions(i interface{}) (*SubscriberOptions, error) {
+	so, ok1 := i.(*SubscriberOptions)
+	if !ok1 {
+		return nil, errors.New("extra expect type: *SubscriberOptions, actual: " + reflect.TypeOf(i).String())
+	}
+	return so, nil
+}
+
+type SubscriberInfo struct {
+	ActiveAt int64
+	Perm     Permission
+}
+
+func (i *SubscriberInfo) update(options *SubscriberOptions) error {
+	i.Perm = options.Perm
+	return nil
+}
+
+func NewSubscriberInfo(so *SubscriberOptions) *SubscriberInfo {
+	return &SubscriberInfo{
+		Perm: so.Perm,
 	}
 }
 
-func onQueueExecutorPanic(i interface{}) {
-	logger.E("message queue goroutine pool handle message queue panic %v", i)
-}
-
-type Group struct {
+type Channel struct {
 	id subscription.ChanID
 
-	msgSequence int64
-	seqRemain   int64
-
-	startup string
+	seq       int64
+	seqRemain int64
 
 	mute      bool
 	dissolved bool
@@ -83,70 +79,111 @@ type Group struct {
 	// checkActive 定时检查群活跃情况
 	checkActive *timingwheel.Task
 
-	lastMsgAt time.Time
-	mu        *sync.Mutex
-	members   map[subscription.SubscriberID]*memberInfo
+	lastMsgAt   time.Time
+	mu          *sync.Mutex
+	subscribers map[subscription.SubscriberID]*SubscriberInfo
+	info        subscription.ChanInfo
 
-	store store.SubscriptionStore
-	gate  gate.Interface
+	store    store.SubscriptionStore
+	seqStore ChannelSequenceStore
+	gate     gate.Interface
 }
 
-func NewGroup(chanID subscription.ChanID, seq int64) *Group {
-	ret := new(Group)
+func NewChannel(chanID subscription.ChanID, gate gate.Interface,
+	store store.SubscriptionStore, seqStore ChannelSequenceStore) (*Channel, error) {
+
+	ret := new(Channel)
+	ret.gate = gate
+	ret.store = store
+	ret.seqStore = seqStore
+
 	ret.mu = &sync.Mutex{}
-	ret.members = map[subscription.SubscriberID]*memberInfo{}
-	ret.startup = strconv.FormatInt(time.Now().Unix(), 10)
+	ret.subscribers = map[subscription.SubscriberID]*SubscriberInfo{}
 	ret.messages = make(chan *PublishMessage, 100)
 	ret.notify = make(chan *PublishMessage, 10)
 	ret.checkActive = tw.After(messageQueueSleep)
 	ret.queueRunning = 0
-	ret.msgSequence = seq
-	ret.seqRemain = msgSeqSegmentLen
 	ret.id = chanID
-	return ret
+	err := ret.loadSeq()
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
-func (g *Group) Update(ci *subscription.ChanInfo) error {
+func (g *Channel) nextSeq() (int64, error) {
+	if atomic.AddInt64(&g.seqRemain, -1) <= 0 {
+		err := g.loadSeq()
+		if err != nil {
+			return 0, err
+		}
+		atomic.AddInt64(&g.seq, -1)
+	}
+	return atomic.AddInt64(&g.seq, 1), nil
+}
+
+func (g *Channel) loadSeq() error {
+	seq, length, err := g.seqStore.NextSegmentSequence(g.id, g.info)
+	if err != nil {
+		return err
+	}
+	atomic.StoreInt64(&g.seqRemain, length)
+	// because seq increment before set to message
+	atomic.StoreInt64(&g.seq, seq)
 	return nil
 }
 
-func (g *Group) Subscribe(id subscription.SubscriberID, extra interface{}) error {
+func (g *Channel) Update(ci *subscription.ChanInfo) error {
+	// TODO
+	return nil
+}
+
+func (g *Channel) Subscribe(id subscription.SubscriberID, extra interface{}) error {
+	so, err := getSubscriberOptions(extra)
+	if err != nil {
+		return err
+	}
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	_, ok := g.members[id]
+	_, ok := g.subscribers[id]
 	if ok {
 		return errors.New(subscription.ErrAlreadySubscribed)
 	}
-	g.members[id] = newMemberInfo()
+	g.subscribers[id] = NewSubscriberInfo(so)
 	return nil
 }
 
-func (g *Group) Unsubscribe(id subscription.SubscriberID) error {
+func (g *Channel) Unsubscribe(id subscription.SubscriberID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	_, ok := g.members[id]
+	_, ok := g.subscribers[id]
 	if !ok {
 		return errors.New(subscription.ErrNotSubscribed)
 	}
-	delete(g.members, id)
+	delete(g.subscribers, id)
 	return nil
 }
 
-func (g *Group) UpdateSubscribe(id subscription.SubscriberID, extra interface{}) error {
+func (g *Channel) UpdateSubscribe(id subscription.SubscriberID, extra interface{}) error {
+	so, err := getSubscriberOptions(extra)
+	if err != nil {
+		return err
+	}
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	info, ok := g.members[id]
+	info, ok := g.subscribers[id]
 	if !ok {
 		return errors.New(subscription.ErrNotSubscribed)
 	}
-	g.members[id] = info
-	return nil
+	return info.update(so)
 }
 
-func (g *Group) Publish(msg subscription.Message) error {
+func (g *Channel) Publish(msg subscription.Message) error {
 
 	message, ok := msg.(*PublishMessage)
 	if !ok {
@@ -161,21 +198,19 @@ func (g *Group) Publish(msg subscription.Message) error {
 	case TypeNotify:
 		return g.EnqueueNotify(message)
 	case TypeMessage:
-		_, err := g.EnqueueMessage(message)
+		err := g.EnqueueMessage(message)
 		return err
 	default:
 		return errors.New(errUnknownMessageType)
 	}
 }
 
-func (g *Group) Close() error {
+func (g *Channel) Close() error {
 
 	return nil
 }
 
-func (g *Group) EnqueueNotify(msg *PublishMessage) error {
-	seq := atomic.AddInt64(&g.msgSequence, 1)
-	msg.Seq = seq
+func (g *Channel) EnqueueNotify(msg *PublishMessage) error {
 	select {
 	case g.notify <- msg:
 		atomic.AddInt32(&g.queued, 1)
@@ -185,66 +220,49 @@ func (g *Group) EnqueueNotify(msg *PublishMessage) error {
 	return g.checkMsgQueue()
 }
 
-func (g *Group) EnqueueMessage(m *PublishMessage) (int64, error) {
+func (g *Channel) EnqueueMessage(m *PublishMessage) error {
 
 	g.mu.Lock()
-	mf, exist := g.members[m.From]
+	s, exist := g.subscribers[m.From]
 	g.mu.Unlock()
 
 	if !exist {
-		return 0, errors.New("not a group member")
+		return errors.New("not a group member")
 	}
-	if mf.muted {
-		return 0, errors.New("a muted group member send message")
+	if exist {
+		if !s.Perm.allows(MaskPermWrite) {
+			return errors.New("permission denied: write")
+		}
 	}
-
-	seq := atomic.AddInt64(&g.msgSequence, 1)
-
 	cm := messages.ChatMessage{}
 	err := m.Message.Data.Deserialize(&cm)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	cm.Seq = seq
+	m.Seq, err = g.nextSeq()
+	if err != nil {
+		return err
+	}
+	cm.Seq = m.Seq
 	m.Message.Data = messages.NewData(&cm)
-
 	err = g.store.StoreMessage(g.id, m)
 	if err != nil {
-		atomic.AddInt64(&g.msgSequence, -1)
-		return 0, err
-	}
-	g.checkSeqRemain()
-
-	err = g.store.StoreSeq(g.id, seq)
-	if err != nil {
-		logger.E("Group.EnqueueMessage update group message state error, %v", err)
-		return 0, err
+		return err
 	}
 
 	select {
 	case g.messages <- m:
 		atomic.AddInt32(&g.queued, 1)
 	default:
-		return 0, errors.New("too many messages,the group message queue is full")
+		return errors.New("too many messages,the group message queue is full")
 	}
-	if err := g.checkMsgQueue(); err != nil {
-		if err == ants.ErrPoolOverload {
-			logger.E("group message queue handle goroutine pool is overload")
-		}
-		return 0, err
+	if err = g.checkMsgQueue(); err != nil {
+		return err
 	}
-	return seq, nil
+	return nil
 }
 
-func (g *Group) checkSeqRemain() {
-	g.seqRemain--
-	remain := atomic.AddInt64(&g.seqRemain, -1)
-	if remain <= 0 {
-		// TODO load a new segment
-	}
-}
-
-func (g *Group) checkMsgQueue() error {
+func (g *Channel) checkMsgQueue() error {
 	if atomic.LoadInt32(&g.queueRunning) == 1 {
 		return nil
 	}
@@ -290,15 +308,17 @@ func (g *Group) checkMsgQueue() error {
 	return nil
 }
 
-func (g *Group) sendMessage(message *PublishMessage) {
-	logger.D("Group.sendMessage: %s", message)
+func (g *Channel) sendMessage(message *PublishMessage) {
+	logger.D("Channel.sendMessage: %s", message)
 
 	g.mu.Lock()
-	for subscriberID, mf := range g.members {
-		if !mf.online || subscriberID == message.From {
+	for subscriberID, mf := range g.subscribers {
+		if mf.Perm.allows(MaskPermRead) {
 			continue
 		}
+
 		err := g.gate.EnqueueMessage(gate.ID(subscriberID), message.Message)
+
 		if err != nil {
 			logger.E("%v", err)
 		}

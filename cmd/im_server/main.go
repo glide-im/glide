@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/glide-im/glide/internal/config"
 	"github.com/glide-im/glide/internal/im_server"
-	"github.com/glide-im/glide/internal/message_store_db"
+	"github.com/glide-im/glide/internal/store_db"
 	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/bootstrap"
 	"github.com/glide-im/glide/pkg/messaging/message_handler"
@@ -20,7 +20,7 @@ func main() {
 	}
 
 	auth := jwt_auth.NewAuthorizeImpl(config.WsServer.JwtSecret)
-	dbStore, err := message_store_db.New(config.MySql)
+	dbStore, err := store_db.New(config.MySql)
 	if err != nil {
 		panic(err)
 	}
@@ -29,11 +29,11 @@ func main() {
 		panic(err)
 	}
 
-	store := &message_store_db.SubscriptionMessageStore{}
+	store := &store_db.SubscriptionStore{}
 	options := bootstrap.Options{
 		Messaging:    handler,
 		Gate:         gateway,
-		Subscription: subscription_impl.NewSubscription(store),
+		Subscription: subscription_impl.NewSubscription(store, store),
 	}
 
 	err = bootstrap.Bootstrap(&options)

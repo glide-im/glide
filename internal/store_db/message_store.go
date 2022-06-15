@@ -1,4 +1,4 @@
-package message_store_db
+package store_db
 
 import (
 	"database/sql"

@@ -1,4 +1,4 @@
-package message_store_kafka
+package store_kafka
 
 import (
 	"github.com/glide-im/glide/pkg/messages"
