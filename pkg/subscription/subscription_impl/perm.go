@@ -1,4 +1,4 @@
-package group_subscription
+package subscription_impl
 
 const (
 	maskPermRead  = 1 << iota

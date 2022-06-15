@@ -1,4 +1,4 @@
-package group_subscription
+package subscription_impl
 
 import (
 	"errors"
@@ -15,6 +15,11 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+//SubscriberOptions is the options for the subscriber
+type SubscriberOptions struct {
+	Role string
+}
 
 type memberInfo struct {
 	online    bool

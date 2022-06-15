@@ -5,14 +5,14 @@ import (
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/subscription"
-	"github.com/glide-im/glide/pkg/subscription/group_subscription"
+	"github.com/glide-im/glide/pkg/subscription/subscription_impl"
 )
 
 // handleGroupMsg 分发群消息
 func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage) error {
 
 	id := subscription.ChanID(msg.To)
-	m := group_subscription.PublishMessage{
+	m := subscription_impl.PublishMessage{
 		From:    subscription.SubscriberID(msg.From),
 		Message: msg,
 	}
