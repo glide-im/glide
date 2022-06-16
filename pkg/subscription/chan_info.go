@@ -11,6 +11,10 @@ type ChanInfo struct {
 	ID   ChanID
 	Type ChanType
 
+	Muted   bool
+	Blocked bool
+	Closed  bool
+
 	Parent *ChanID
 	Child  []ChanID
 }

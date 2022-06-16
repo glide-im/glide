@@ -24,8 +24,6 @@ type Channel interface {
 
 	Unsubscribe(id SubscriberID) error
 
-	UpdateSubscribe(id SubscriberID, extra interface{}) error
-
 	Update(i *ChanInfo) error
 
 	Publish(msg Message) error

@@ -9,18 +9,22 @@ import (
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/glide-im/glide/pkg/timingwheel"
 	"reflect"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
+const (
+	errNotMemberOfChannel    = "not member of channel"
+	errPermissionDeniedWrite = "permission denied: write"
+	errChannelMuted          = "channel is muted"
+	errChannelBlocked        = "channel is blocked"
+)
+
 var tw = timingwheel.NewTimingWheel(time.Second, 3, 20)
 
-// group message sequence segment length
-const defaultMsgSeqSegmentLen = 200
-
-const messageQueueSleep = time.Second * 10
+// messageQueueTimeout channel message push queue idle timeout.
+const messageQueueTimeout = time.Second * 10
 
 // ChannelSequenceStore .
 type ChannelSequenceStore interface {
@@ -44,8 +48,23 @@ func getSubscriberOptions(i interface{}) (*SubscriberOptions, error) {
 }
 
 type SubscriberInfo struct {
-	ActiveAt int64
-	Perm     Permission
+	Perm Permission
+}
+
+func (i *SubscriberInfo) canRead() bool {
+	return i.Perm.allows(MaskPermRead)
+}
+
+func (i *SubscriberInfo) canWrite() bool {
+	return i.Perm.allows(MaskPermWrite)
+}
+
+func (i *SubscriberInfo) isSystem() bool {
+	return i.Perm.allows(MaskPermSystem)
+}
+
+func (i *SubscriberInfo) isAdmin() bool {
+	return i.Perm.allows(MaskPermAdmin)
 }
 
 func (i *SubscriberInfo) update(options *SubscriberOptions) error {
@@ -65,9 +84,6 @@ type Channel struct {
 	seq       int64
 	seqRemain int64
 
-	mute      bool
-	dissolved bool
-
 	// messages 群消息队列
 	messages chan *PublishMessage
 	// notify 群通知队列
@@ -76,13 +92,12 @@ type Channel struct {
 	queueRunning int32
 	queued       int32
 
-	// checkActive 定时检查群活跃情况
-	checkActive *timingwheel.Task
+	sleepTimer *timingwheel.Task
 
-	lastMsgAt   time.Time
-	mu          *sync.Mutex
+	activeAt    time.Time
+	mu          *sync.RWMutex
 	subscribers map[subscription.SubscriberID]*SubscriberInfo
-	info        subscription.ChanInfo
+	info        *subscription.ChanInfo
 
 	store    store.SubscriptionStore
 	seqStore ChannelSequenceStore
@@ -92,18 +107,18 @@ type Channel struct {
 func NewChannel(chanID subscription.ChanID, gate gate.Interface,
 	store store.SubscriptionStore, seqStore ChannelSequenceStore) (*Channel, error) {
 
-	ret := new(Channel)
-	ret.gate = gate
-	ret.store = store
-	ret.seqStore = seqStore
-
-	ret.mu = &sync.Mutex{}
-	ret.subscribers = map[subscription.SubscriberID]*SubscriberInfo{}
-	ret.messages = make(chan *PublishMessage, 100)
-	ret.notify = make(chan *PublishMessage, 10)
-	ret.checkActive = tw.After(messageQueueSleep)
-	ret.queueRunning = 0
-	ret.id = chanID
+	ret := &Channel{
+		id:          chanID,
+		messages:    make(chan *PublishMessage, 100),
+		notify:      make(chan *PublishMessage, 10),
+		sleepTimer:  tw.After(messageQueueTimeout),
+		mu:          &sync.RWMutex{},
+		subscribers: map[subscription.SubscriberID]*SubscriberInfo{},
+		info:        &subscription.ChanInfo{},
+		store:       store,
+		seqStore:    seqStore,
+		gate:        gate,
+	}
 	err := ret.loadSeq()
 	if err != nil {
 		return nil, err
@@ -111,30 +126,9 @@ func NewChannel(chanID subscription.ChanID, gate gate.Interface,
 	return ret, nil
 }
 
-func (g *Channel) nextSeq() (int64, error) {
-	if atomic.AddInt64(&g.seqRemain, -1) <= 0 {
-		err := g.loadSeq()
-		if err != nil {
-			return 0, err
-		}
-		atomic.AddInt64(&g.seq, -1)
-	}
-	return atomic.AddInt64(&g.seq, 1), nil
-}
-
-func (g *Channel) loadSeq() error {
-	seq, length, err := g.seqStore.NextSegmentSequence(g.id, g.info)
-	if err != nil {
-		return err
-	}
-	atomic.StoreInt64(&g.seqRemain, length)
-	// because seq increment before set to message
-	atomic.StoreInt64(&g.seq, seq)
-	return nil
-}
-
 func (g *Channel) Update(ci *subscription.ChanInfo) error {
-	// TODO
+	g.info.Blocked = ci.Blocked
+	g.info.Muted = ci.Muted
 	return nil
 }
 
@@ -144,12 +138,19 @@ func (g *Channel) Subscribe(id subscription.SubscriberID, extra interface{}) err
 		return err
 	}
 
+	if g.info.Closed {
+		return errors.New("channel is closed")
+	}
+	if g.info.Blocked {
+		return errors.New("channel is blocked")
+	}
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	_, ok := g.subscribers[id]
+	sb, ok := g.subscribers[id]
 	if ok {
-		return errors.New(subscription.ErrAlreadySubscribed)
+		return sb.update(so)
 	}
 	g.subscribers[id] = NewSubscriberInfo(so)
 	return nil
@@ -167,22 +168,6 @@ func (g *Channel) Unsubscribe(id subscription.SubscriberID) error {
 	return nil
 }
 
-func (g *Channel) UpdateSubscribe(id subscription.SubscriberID, extra interface{}) error {
-	so, err := getSubscriberOptions(extra)
-	if err != nil {
-		return err
-	}
-
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	info, ok := g.subscribers[id]
-	if !ok {
-		return errors.New(subscription.ErrNotSubscribed)
-	}
-	return info.update(so)
-}
-
 func (g *Channel) Publish(msg subscription.Message) error {
 
 	message, ok := msg.(*PublishMessage)
@@ -194,11 +179,32 @@ func (g *Channel) Publish(msg subscription.Message) error {
 		return errors.New(errUnknownMessageType)
 	}
 
+	g.mu.RLock()
+	s, exist := g.subscribers[message.From]
+	g.mu.RUnlock()
+
+	if !exist {
+		return errors.New(errNotMemberOfChannel)
+	}
+	if !s.canWrite() {
+		return errors.New(errPermissionDeniedWrite)
+	}
+	if g.info.Muted {
+		if !s.isSystem() || !s.isAdmin() {
+			return errors.New(errChannelMuted)
+		}
+	}
+	if g.info.Blocked {
+		if !s.isSystem() {
+			return errors.New(errChannelBlocked)
+		}
+	}
+
 	switch message.Type {
 	case TypeNotify:
-		return g.EnqueueNotify(message)
+		return g.enqueueNotify(message)
 	case TypeMessage:
-		err := g.EnqueueMessage(message)
+		err := g.enqueue(message)
 		return err
 	default:
 		return errors.New(errUnknownMessageType)
@@ -206,11 +212,23 @@ func (g *Channel) Publish(msg subscription.Message) error {
 }
 
 func (g *Channel) Close() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 
+	g.info.Closed = true
+
+	close(g.messages)
+	close(g.notify)
+
+	g.subscribers = map[subscription.SubscriberID]*SubscriberInfo{}
+
+	if g.queued > 0 {
+		logger.D("chan %s closed, %d messages dropped", g.id, g.queued)
+	}
 	return nil
 }
 
-func (g *Channel) EnqueueNotify(msg *PublishMessage) error {
+func (g *Channel) enqueueNotify(msg *PublishMessage) error {
 	select {
 	case g.notify <- msg:
 		atomic.AddInt32(&g.queued, 1)
@@ -220,20 +238,8 @@ func (g *Channel) EnqueueNotify(msg *PublishMessage) error {
 	return g.checkMsgQueue()
 }
 
-func (g *Channel) EnqueueMessage(m *PublishMessage) error {
+func (g *Channel) enqueue(m *PublishMessage) error {
 
-	g.mu.Lock()
-	s, exist := g.subscribers[m.From]
-	g.mu.Unlock()
-
-	if !exist {
-		return errors.New("not a group member")
-	}
-	if exist {
-		if !s.Perm.allows(MaskPermWrite) {
-			return errors.New("permission denied: write")
-		}
-	}
 	cm := messages.ChatMessage{}
 	err := m.Message.Data.Deserialize(&cm)
 	if err != nil {
@@ -263,65 +269,97 @@ func (g *Channel) EnqueueMessage(m *PublishMessage) error {
 }
 
 func (g *Channel) checkMsgQueue() error {
+
 	if atomic.LoadInt32(&g.queueRunning) == 1 {
 		return nil
 	}
 
 	go func() {
+		defer func() {
+			err := recover()
+			if err != nil {
+				atomic.StoreInt32(&g.queueRunning, 0)
+				logger.E("message queue panic: %v", err)
+			}
+		}()
+
 		atomic.StoreInt32(&g.queueRunning, 1)
-		logger.D("run a message queue reader goroutine")
-		g.checkActive = tw.After(messageQueueSleep)
+		g.sleepTimer = tw.After(messageQueueTimeout)
 		for {
 			select {
 			case m := <-g.notify:
-				g.lastMsgAt = time.Now()
+				g.activeAt = time.Now()
 				atomic.AddInt32(&g.queued, -1)
 				switch m.Type {
 				default:
-					g.sendMessage(m)
+					g.push(m)
 				}
-				// 优先派送群通知消息
-				continue
-			case <-g.checkActive.C:
-				g.checkActive.Cancel()
-				if g.lastMsgAt.Add(messageQueueSleep).Before(time.Now()) {
-					q := atomic.LoadInt32(&g.queued)
-					if q != 0 {
-						logger.W("group message queue blocked, size=" + strconv.FormatInt(int64(q), 10))
-						return
-					}
-					// 超过三十分钟没有发消息了, 停止消息下行任务
+			case <-g.sleepTimer.C:
+				g.sleepTimer.Cancel()
+				if g.activeAt.Add(messageQueueTimeout).Before(time.Now()) {
 					goto REST
 				} else {
-					g.checkActive = tw.After(messageQueueSleep)
+					g.sleepTimer = tw.After(messageQueueTimeout)
 				}
 			case m := <-g.messages:
 				atomic.AddInt32(&g.queued, -1)
-				g.lastMsgAt = time.Now()
-				g.sendMessage(m)
+				g.activeAt = time.Now()
+				g.push(m)
 			}
 		}
 	REST:
-		logger.D("message queue read goroutine exit")
+		dropped := 0
+		for range g.messages {
+			dropped++
+			atomic.StoreInt32(&g.queued, -1)
+		}
+		if dropped > 0 {
+			logger.W("chan %s message queue stopped, %d message(s) have been dropped", g.id, dropped)
+		} else {
+			logger.D("chan %s message queue stopped", g.id)
+		}
 		atomic.StoreInt32(&g.queueRunning, 0)
+		atomic.StoreInt32(&g.queued, 0)
 	}()
 	return nil
 }
 
-func (g *Channel) sendMessage(message *PublishMessage) {
-	logger.D("Channel.sendMessage: %s", message)
+func (g *Channel) push(message *PublishMessage) {
+	logger.I("chan %s push message: %v", g.id, message.Message)
 
-	g.mu.Lock()
-	for subscriberID, mf := range g.subscribers {
-		if mf.Perm.allows(MaskPermRead) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	for subscriberID, sInfo := range g.subscribers {
+
+		if !sInfo.canRead() {
 			continue
 		}
-
 		err := g.gate.EnqueueMessage(gate.ID(subscriberID), message.Message)
-
 		if err != nil {
-			logger.E("%v", err)
+			logger.E("chan %s push message to subscribe error: %v", g.id, err)
 		}
 	}
-	g.mu.Unlock()
+}
+
+func (g *Channel) nextSeq() (int64, error) {
+	if atomic.AddInt64(&g.seqRemain, -1) <= 0 {
+		err := g.loadSeq()
+		if err != nil {
+			return 0, err
+		}
+		atomic.AddInt64(&g.seq, -1)
+	}
+	return atomic.AddInt64(&g.seq, 1), nil
+}
+
+func (g *Channel) loadSeq() error {
+	seq, length, err := g.seqStore.NextSegmentSequence(g.id, *g.info)
+	if err != nil {
+		return err
+	}
+	atomic.StoreInt64(&g.seqRemain, length)
+	// because seq increment before set to message
+	atomic.StoreInt64(&g.seq, seq)
+	return nil
 }

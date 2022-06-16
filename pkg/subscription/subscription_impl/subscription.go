@@ -132,7 +132,7 @@ func (u *realSubscription) UpdateSubscriber(chID subscription.ChanID, id subscri
 	if !ok {
 		return errors.New(subscription.ErrChanNotExist)
 	}
-	return ch.UpdateSubscribe(id, update)
+	return ch.Subscribe(id, update)
 }
 
 func (u *realSubscription) RemoveChannel(chID subscription.ChanID) error {

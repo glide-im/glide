@@ -3,9 +3,10 @@ package subscription_impl
 type PermMask int
 
 const (
-	MaskPermRead  PermMask = 1 << iota
-	MaskPermWrite          = 1 << iota
-	MaskPermAdmin          = 1 << iota
+	MaskPermRead   PermMask = 1 << iota
+	MaskPermWrite           = 1 << iota
+	MaskPermAdmin           = 1 << iota
+	MaskPermSystem          = 1 << iota
 )
 
 const (
