@@ -84,10 +84,7 @@ type Channel struct {
 	seq       int64
 	seqRemain int64
 
-	// messages 群消息队列
 	messages chan *PublishMessage
-	// notify 群通知队列
-	notify chan *PublishMessage
 
 	queueRunning int32
 	queued       int32
@@ -110,7 +107,6 @@ func NewChannel(chanID subscription.ChanID, gate gate.Interface,
 	ret := &Channel{
 		id:          chanID,
 		messages:    make(chan *PublishMessage, 100),
-		notify:      make(chan *PublishMessage, 10),
 		sleepTimer:  tw.After(messageQueueTimeout),
 		mu:          &sync.RWMutex{},
 		subscribers: map[subscription.SubscriberID]*SubscriberInfo{},
@@ -169,7 +165,9 @@ func (g *Channel) Unsubscribe(id subscription.SubscriberID) error {
 }
 
 func (g *Channel) Publish(msg subscription.Message) error {
-
+	if g.info.Closed {
+		return errors.New("channel closed")
+	}
 	message, ok := msg.(*PublishMessage)
 	if !ok {
 		return errors.New("unexpected message type, expect: *subscription.PublishMessage, actual:" + reflect.TypeOf(msg).String())
@@ -218,8 +216,6 @@ func (g *Channel) Close() error {
 	g.info.Closed = true
 
 	close(g.messages)
-	close(g.notify)
-
 	g.subscribers = map[subscription.SubscriberID]*SubscriberInfo{}
 
 	if g.queued > 0 {
@@ -230,7 +226,7 @@ func (g *Channel) Close() error {
 
 func (g *Channel) enqueueNotify(msg *PublishMessage) error {
 	select {
-	case g.notify <- msg:
+	case g.messages <- msg:
 		atomic.AddInt32(&g.queued, 1)
 	default:
 		return errors.New("notify message queue is full")
@@ -270,10 +266,11 @@ func (g *Channel) enqueue(m *PublishMessage) error {
 
 func (g *Channel) checkMsgQueue() error {
 
-	if atomic.LoadInt32(&g.queueRunning) == 1 {
+	if atomic.LoadInt32(&g.queueRunning) != 0 {
 		return nil
 	}
 
+	atomic.StoreInt32(&g.queueRunning, 1)
 	go func() {
 		defer func() {
 			err := recover()
@@ -283,17 +280,9 @@ func (g *Channel) checkMsgQueue() error {
 			}
 		}()
 
-		atomic.StoreInt32(&g.queueRunning, 1)
 		g.sleepTimer = tw.After(messageQueueTimeout)
 		for {
 			select {
-			case m := <-g.notify:
-				g.activeAt = time.Now()
-				atomic.AddInt32(&g.queued, -1)
-				switch m.Type {
-				default:
-					g.push(m)
-				}
 			case <-g.sleepTimer.C:
 				g.sleepTimer.Cancel()
 				if g.activeAt.Add(messageQueueTimeout).Before(time.Now()) {
@@ -302,6 +291,9 @@ func (g *Channel) checkMsgQueue() error {
 					g.sleepTimer = tw.After(messageQueueTimeout)
 				}
 			case m := <-g.messages:
+				if m == nil {
+					goto REST
+				}
 				atomic.AddInt32(&g.queued, -1)
 				g.activeAt = time.Now()
 				g.push(m)

@@ -6,6 +6,7 @@ import (
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 var normalOpts = &SubscriberOptions{
@@ -20,7 +21,7 @@ func mockNewChannel(id subscription.ChanID) *Channel {
 type mockGate struct {
 }
 
-func (m mockGate) EnqueueMessage(id gate.ID, message *messages.GlideMessage) error {
+func (m mockGate) EnqueueMessage(gate.ID, *messages.GlideMessage) error {
 	return nil
 }
 
@@ -45,13 +46,18 @@ func TestGroup_Publish(t *testing.T) {
 	channel := mockNewChannel("test")
 	err2 := channel.Subscribe("test", normalOpts)
 	assert.NoError(t, err2)
-	err := channel.Publish(&PublishMessage{
+	msg := &PublishMessage{
 		From:    "test",
-		Seq:     1,
 		Type:    TypeNotify,
 		Message: &messages.GlideMessage{},
-	})
+	}
+	err := channel.Publish(msg)
 	assert.NoError(t, err)
+	err = channel.Publish(msg)
+	assert.NoError(t, err)
+	err = channel.Publish(msg)
+	assert.NoError(t, err)
+	time.Sleep(time.Millisecond * 50)
 }
 
 func TestChannel_PublishErr(t *testing.T) {
@@ -131,4 +137,14 @@ func TestChannel_Update(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, channel.info.Blocked, false)
 	assert.Equal(t, channel.info.Muted, true)
+}
+
+func TestChannel_Close(t *testing.T) {
+	channel := mockNewChannel("test")
+	err := channel.Subscribe("t", normalOpts)
+	assert.NoError(t, err)
+	err = channel.Close()
+	assert.NoError(t, err)
+	err = channel.Publish(&PublishMessage{From: "t", Type: TypeMessage})
+	assert.Error(t, err)
 }
