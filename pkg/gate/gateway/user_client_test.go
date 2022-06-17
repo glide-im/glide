@@ -51,6 +51,22 @@ func TestClient_RunServerHeartbeat(t *testing.T) {
 	client.Exit()
 }
 
+func TestClient_RunServerHeartbeatTimeout(t *testing.T) {
+	fn, _ := mockReadFn()
+	client := NewClientWithConfig(&mockConnection{
+		writeDelayMilliSec: 100,
+		mockRead:           fn,
+	}, mockGateway{}, mockMsgHandler, &ClientConfig{
+		ClientHeartbeatDuration: defaultHeartbeatDuration,
+		ServerHeartbeatDuration: time.Millisecond * 100,
+		HeartbeatLostLimit:      3,
+		CloseImmediately:        true,
+	})
+	client.Run()
+
+	time.Sleep(time.Second * 1)
+}
+
 func TestClient_ExitImmediately(t *testing.T) {
 
 	fn, ch := mockReadFn()
@@ -72,12 +88,36 @@ func TestClient_ExitImmediately(t *testing.T) {
 			t.Error(err)
 		}
 	}
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 450)
 	client.Exit()
 
+	assert.Equal(t, client.queuedMessage, int64(8))
+}
+
+func TestClient_Exit(t *testing.T) {
+	fn, _ := mockReadFn()
+
+	client := NewClient(&mockConnection{
+		writeDelayMilliSec: 10,
+		mockRead:           fn,
+	}, mockGateway{}, mockMsgHandler)
+	client.config.CloseImmediately = false
+	client.Run()
+
+	for i := 0; i < 20; i++ {
+		err := client.EnqueueMessage(messages.NewMessage(1, messages.ActionHeartbeat, nil))
+		if err != nil {
+			t.Error(err)
+		}
+	}
+	client.Exit()
 	assert.False(t, client.IsRunning())
 	assert.Error(t, client.EnqueueMessage(messages.NewMessage(1, messages.ActionHeartbeat, nil)))
 	assert.Equal(t, client.state, stateClosed)
+
+	time.Sleep(time.Millisecond * 300)
+
+	assert.Equal(t, client.queuedMessage, int64(0))
 }
 
 func mockReadFn() (func() ([]byte, error), chan<- *messages.GlideMessage) {
@@ -96,7 +136,7 @@ type mockConnection struct {
 
 func (m *mockConnection) Write(data []byte) error {
 	time.Sleep(time.Millisecond * m.writeDelayMilliSec)
-	log.Println("write:", string(data))
+	log.Println("runWrite:", string(data))
 	return nil
 }
 

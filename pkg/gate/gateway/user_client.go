@@ -7,6 +7,7 @@ import (
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/timingwheel"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -24,10 +25,8 @@ const (
 // client state
 const (
 	_ int32 = iota
-	// stateRunning client is running, can read and write message.
+	// stateRunning client is running, can runRead and runWrite message.
 	stateRunning
-	// stateClosing client is closing, can't read and write message, wait for send all message in queue done.
-	stateClosing
 	// stateClosed client is closed, cannot do anything.
 	stateClosed
 )
@@ -45,8 +44,8 @@ type ClientConfig struct {
 	HeartbeatLostLimit int
 
 	// CloseImmediately true express when client exit, discard all message in queue, and close connection immediately,
-	// otherwise client will close read, and mark as stateClosing, the client cannot receive and enqueue message,
-	// after all message in queue is sent, client will close write and connection.
+	// otherwise client will close runRead, and mark as stateClosing, the client cannot receive and enqueue message,
+	// after all message in queue is sent, client will close runWrite and connection.
 	CloseImmediately bool
 }
 
@@ -56,10 +55,6 @@ type Client struct {
 	// conn is the real connection
 	conn conn.Connection
 
-	// logged true if client has logged
-	logged bool
-	// connectAt is the time when client connected
-	connectAt time.Time
 	// state is the client state
 	state int32
 
@@ -68,14 +63,15 @@ type Client struct {
 	// messages is the buffered channel for message to push to client.
 	messages chan *messages.GlideMessage
 
-	// rCloseCh is the channel for read goroutine to close
-	rCloseCh chan struct{}
-	// wCloseCh is the channel for write goroutine to close
-	wCloseCh chan struct{}
-	// readClosed flag for read goroutine closed, non-zero means closed
-	readClosed int32
-	// writeClosed flag for write goroutine closed, non-zero means closed
-	writeClosed int32
+	// closeReadCh is the channel for runRead goroutine to close
+	closeReadCh chan struct{}
+	// closeWriteCh is the channel for runWrite goroutine to close
+	closeWriteCh chan struct{}
+
+	// closeWriteOnce is the once for close runWrite goroutine
+	closeWriteOnce sync.Once
+	// closeReadOnce is the once for close runRead goroutine
+	closeReadOnce sync.Once
 
 	// hbC is the timer for client heartbeat
 	hbC *timingwheel.Task
@@ -105,24 +101,23 @@ func NewClientWithConfig(conn conn.Connection, mgr gate.Gateway, handler gate.Me
 			CloseImmediately:        false,
 		}
 	}
-	ret := new(Client)
-	ret.conn = conn
-	ret.state = stateRunning
-	ret.messages = make(chan *messages.GlideMessage, 60)
-	ret.connectAt = time.Now()
-	ret.rCloseCh = make(chan struct{})
-	ret.wCloseCh = make(chan struct{})
-	ret.hbC = tw.After(config.ClientHeartbeatDuration)
-	ret.hbS = tw.After(config.ServerHeartbeatDuration)
-	ret.hbLost = 0
-	ret.info = &gate.Info{
-		ConnectionAt: time.Now().Unix(),
-		CliAddr:      conn.GetConnInfo().Addr,
+
+	ret := Client{
+		conn:         conn,
+		messages:     make(chan *messages.GlideMessage, 100),
+		closeReadCh:  make(chan struct{}),
+		closeWriteCh: make(chan struct{}),
+		hbC:          tw.After(config.ClientHeartbeatDuration),
+		hbS:          tw.After(config.ServerHeartbeatDuration),
+		info: &gate.Info{
+			ConnectionAt: time.Now().Unix(),
+			CliAddr:      conn.GetConnInfo().Addr,
+		},
+		mgr:        mgr,
+		msgHandler: handler,
+		config:     config,
 	}
-	ret.mgr = mgr
-	ret.msgHandler = handler
-	ret.config = config
-	return ret
+	return &ret
 }
 
 func NewClient(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandler) *Client {
@@ -135,9 +130,6 @@ func (c *Client) GetInfo() gate.Info {
 
 // SetID set client id.
 func (c *Client) SetID(id gate.ID) {
-	if id == "" || id.IsTemp() {
-		c.logged = false
-	}
 	c.info.ID = id
 }
 
@@ -146,86 +138,66 @@ func (c *Client) IsRunning() bool {
 	return atomic.LoadInt32(&c.state) == stateRunning
 }
 
-func (c *Client) Logged() bool {
-	return c.logged
-}
-
 // EnqueueMessage enqueue message to client message queue.
 func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
-	atomic.AddInt64(&c.queuedMessage, 1)
-	defer func() {
-		e := recover()
-		if e != nil {
-			atomic.AddInt64(&c.queuedMessage, -1)
-			logger.E("%v", e)
-		}
-	}()
-	s := atomic.LoadInt32(&c.state)
-	if s == stateClosed {
+	if atomic.LoadInt32(&c.state) == stateClosed {
 		return errors.New("client has closed")
 	}
 	logger.I("EnqueueMessage ID=%s msg=%v", c.info.ID, msg)
 	select {
 	case c.messages <- msg:
+		atomic.AddInt64(&c.queuedMessage, 1)
 	default:
-		atomic.AddInt64(&c.queuedMessage, -1)
 		logger.E("msg chan is full, id=%v", c.info.ID)
 	}
 	return nil
 }
 
-// read message from client.
-func (c *Client) read() {
-	readChan, done := messageReader.ReadCh(c.conn)
-
+// runRead message from client.
+func (c *Client) runRead() {
 	defer func() {
 		err := recover()
 		if err != nil {
 			logger.E("read message error", err)
+			c.Exit()
 		}
 	}()
 
+	readChan, done := messageReader.ReadCh(c.conn)
 	var closeReason string
-	atomic.StoreInt32(&c.readClosed, 0)
+
 	for {
 		select {
-		case <-c.rCloseCh:
+		case <-c.closeReadCh:
 			closeReason = "closed initiative"
 			goto STOP
 		case <-c.hbC.C:
 			c.hbLost++
 			if c.hbLost > c.config.HeartbeatLostLimit {
 				closeReason = "heartbeat lost"
-				goto STOP
+				c.Exit()
 			}
-			// reset client heartbeat
 			c.hbC.Cancel()
 			c.hbC = tw.After(c.config.ClientHeartbeatDuration)
 			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, nil))
 		case msg := <-readChan:
 			if msg.err != nil {
-				if !c.IsRunning() || c.handleError(msg.err) {
-					closeReason = "read error, " + msg.err.Error()
-					goto STOP
+				if !c.IsRunning() {
+					closeReason = "read message error, " + msg.err.Error()
+					c.Exit()
 				}
 				continue
 			}
 			if c.info.ID == "" {
-				continue
+				closeReason = "client not logged"
+				c.Exit()
 			}
 			c.hbLost = 0
 			c.hbC.Cancel()
 			c.hbC = tw.After(c.config.ClientHeartbeatDuration)
 
 			if msg.m.GetAction() == messages.ActionHello {
-				data := msg.m.Data
-				hello := messages.Hello{}
-				err := data.Deserialize(&hello)
-				if err != nil {
-					_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid hello message"))
-				} else {
-					c.info.Version = hello.ClientVersion
-				}
+				c.handleHello(msg.m)
 			} else {
 				c.msgHandler(c.info, msg.m)
 			}
@@ -233,118 +205,135 @@ func (c *Client) read() {
 		}
 	}
 STOP:
-	c.hbC.Cancel()
-	atomic.StoreInt32(&c.readClosed, 1)
 	close(done)
-	close(c.rCloseCh)
-	logger.I("read message goroutine closed, reason=%s", closeReason)
+	c.hbC.Cancel()
+	logger.I("read exit, reason=%s", closeReason)
 }
 
-// write message to client.
-func (c *Client) write() {
+// runWrite message to client.
+func (c *Client) runWrite() {
 	defer func() {
 		err := recover()
 		if err != nil {
 			logger.D("write message error, exit client: %v", err)
-			atomic.StoreInt32(&c.state, stateClosed)
-			close(c.messages)
-			_ = c.conn.Close()
+			c.Exit()
 		}
 	}()
 
 	var closeReason string
 	for {
 		select {
-		case <-c.wCloseCh:
+		case <-c.closeWriteCh:
 			closeReason = "closed initiative"
 			goto STOP
 		case <-c.hbS.C:
 			if !c.IsRunning() {
-				closeReason = "client is not active"
-				goto STOP
+				continue
 			}
-			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, ""))
+			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, nil))
 			c.hbS.Cancel()
 			c.hbS = tw.After(c.config.ServerHeartbeatDuration)
 		case m := <-c.messages:
-			b, err := codec.Encode(m)
-			if err != nil {
-				logger.E("serialize output message", err)
-				continue
+			if m == nil {
+				closeReason = "messages chan maybe closed"
+				c.Exit()
 			}
-			err = c.conn.Write(b)
-			atomic.AddInt64(&c.queuedMessage, -1)
-
+			c.write2Conn(m)
 			c.hbS.Cancel()
 			c.hbS = tw.After(c.config.ServerHeartbeatDuration)
-			if err != nil {
-				if !c.IsRunning() || c.handleError(err) {
-					closeReason = "write error, " + err.Error()
-					goto STOP
-				}
-			}
 		}
 	}
 STOP:
-	atomic.StoreInt32(&c.state, stateClosed)
-	atomic.StoreInt32(&c.writeClosed, 1)
-	close(c.wCloseCh)
-
-	if !c.config.CloseImmediately {
-		close(c.messages)
-		_ = c.conn.Close()
-	}
-
-	logger.D("client closed, addr=%s, reason:%s", c.info.CliAddr, closeReason)
-}
-
-// handleError handle error, return true if client should exit.
-func (c *Client) handleError(err error) bool {
-	if conn.ErrClosed != err {
-		logger.E("handle message error: %s", err.Error())
-	}
-	return true
+	c.hbS.Cancel()
+	logger.D("write exit, addr=%s, reason:%s", c.info.CliAddr, closeReason)
 }
 
 // Exit client, note: exit client will not close conn right now, but will close when message chan is empty.
-// It's close read right now, and close write when all message in queue is sent.
+// It's close read right now, and close write2Conn when all message in queue is sent.
 func (c *Client) Exit() {
-	if c.logged {
-		c.logged = false
-	}
-	if c.mgr != nil {
-		mgr := c.mgr
-		c.mgr = nil
-		_ = mgr.ExitClient(c.info.ID)
-	}
-
-	c.SetID("")
-
-	// discard all message in queue and close connection immediately
-	if c.config.CloseImmediately && atomic.LoadInt32(&c.state) != stateClosed {
-		atomic.StoreInt32(&c.state, stateClosed)
-		if atomic.LoadInt32(&c.readClosed) == 0 {
-			c.rCloseCh <- struct{}{}
-		}
-		if atomic.LoadInt32(&c.writeClosed) == 0 {
-			c.wCloseCh <- struct{}{}
-		}
-		close(c.messages)
-		_ = c.conn.Close()
-	}
-
-	if atomic.LoadInt32(&c.state) == stateClosed || atomic.LoadInt32(&c.state) == stateClosing {
+	if atomic.LoadInt32(&c.state) == stateClosed {
 		return
 	}
-	atomic.StoreInt32(&c.state, stateClosing)
+	atomic.StoreInt32(&c.state, stateClosed)
 
-	if atomic.LoadInt32(&c.readClosed) == 0 {
-		c.rCloseCh <- struct{}{}
+	// exit by client self, remove client from manager
+	if c.mgr != nil && c.info.ID != "" {
+		c.SetID("")
+		_ = c.mgr.ExitClient(c.info.ID)
+		c.mgr = nil
+	}
+	c.stopReadWrite()
+
+	if c.config.CloseImmediately {
+		// dropping all message in queue and close connection immediately
+		c.close()
+	} else {
+		// close connection when all message in queue is sent
+		go func() {
+			for {
+				select {
+				case m := <-c.messages:
+					c.write2Conn(m)
+				default:
+					goto END
+				}
+			}
+		END:
+			c.close()
+		}()
 	}
 }
 
 func (c *Client) Run() {
 	logger.I("new client running addr:%s id:%s", c.conn.GetConnInfo().Addr, c.info.ID)
-	go c.read()
-	go c.write()
+	atomic.StoreInt32(&c.state, stateRunning)
+	c.closeWriteOnce = sync.Once{}
+	c.closeReadOnce = sync.Once{}
+
+	go c.runRead()
+	go c.runWrite()
+}
+
+func (c *Client) isClosed() bool {
+	return atomic.LoadInt32(&c.state) == stateClosed
+}
+
+func (c *Client) close() {
+	close(c.messages)
+	_ = c.conn.Close()
+}
+
+func (c *Client) write2Conn(m *messages.GlideMessage) {
+	b, err := codec.Encode(m)
+	if err != nil {
+		logger.E("serialize output message", err)
+		return
+	}
+	err = c.conn.Write(b)
+	atomic.AddInt64(&c.queuedMessage, -1)
+	if err != nil {
+		logger.D("runWrite error: %s", err.Error())
+		c.closeWriteOnce.Do(func() {
+			close(c.closeWriteCh)
+		})
+	}
+}
+
+func (c *Client) stopReadWrite() {
+	c.closeWriteOnce.Do(func() {
+		close(c.closeWriteCh)
+	})
+	c.closeReadOnce.Do(func() {
+		close(c.closeReadCh)
+	})
+}
+
+func (c *Client) handleHello(m *messages.GlideMessage) {
+	hello := messages.Hello{}
+	err := m.Data.Deserialize(&hello)
+	if err != nil {
+		_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid handleHello message"))
+	} else {
+		c.info.Version = hello.ClientVersion
+	}
 }

@@ -60,6 +60,10 @@ func NewServer(options *Options) (*Impl, error) {
 	return ret, nil
 }
 
+func (c *Impl) SetMessageHandler(h gate.MessageHandler) {
+	c.msgHandler = h
+}
+
 func (c *Impl) AddClient(cs gate.Client) {
 	id := cs.GetInfo().ID
 	c.clients[id] = cs

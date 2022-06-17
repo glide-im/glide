@@ -127,7 +127,4 @@ type Client interface {
 
 	// GetInfo returns the client's information.
 	GetInfo() Info
-
-	// Logged returns true if the client is logged in.
-	Logged() bool
 }

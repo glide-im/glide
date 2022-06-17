@@ -60,7 +60,7 @@ func (d *defaultReader) ReadCh(conn conn.Connection) (<-chan *readerRes, chan<- 
 		defer func() {
 			e := recover()
 			if e != nil {
-				logger.E("error on read msg from connection %v", e)
+				logger.E("error on runRead msg from connection %v", e)
 			}
 		}()
 		for {
