@@ -2,9 +2,7 @@ package jwt_auth
 
 import (
 	"errors"
-	"fmt"
 	"github.com/glide-im/glide/pkg/auth"
-	"github.com/glide-im/glide/pkg/logger"
 	"time"
 )
 
@@ -12,8 +10,9 @@ type JwtAuthorize struct {
 }
 
 type JwtAuthInfo struct {
-	UID    string
-	Device string
+	UID         string
+	Device      string
+	ExpiredHour int64
 }
 
 type Response struct {
@@ -30,24 +29,14 @@ func NewAuthorizeImpl(secret string) *JwtAuthorize {
 
 func (a JwtAuthorize) Auth(c auth.Info, t *auth.Token) (*auth.Result, error) {
 
-	info, ok := c.(*JwtAuthInfo)
-	if !ok {
-		return nil, errors.New("invalid auth info")
-	}
-
 	token, err := parseJwt(t.Token)
 	if err != nil {
-		return nil, fmt.Errorf("invalid token")
-	}
 
-	//version, err := userdao.Dao.GetTokenVersion(token.Uid, token.Device)
-	//if err != nil || version == 0 || version > token.Ver {
-	//	return nil, fmt.Errorf("invalid token")
-	//}
-
-	if info.UID == token.Uid && info.Device == token.Device {
-		// logged in
-		logger.D("auth token for a connection is logged in")
+		result := auth.Result{
+			Success: false,
+			Msg:     "invalid token",
+		}
+		return &result, nil
 	}
 
 	return &auth.Result{
@@ -76,16 +65,13 @@ func (a JwtAuthorize) GetToken(c auth.Info) (*auth.Token, error) {
 		Device: info.Device,
 		Ver:    genJwtVersion(),
 	}
-	expire := time.Now().Add(time.Hour * time.Duration(24*7))
+	if info.ExpiredHour == 0 {
+		info.ExpiredHour = 7 * 24
+	}
+	expire := time.Now().Add(time.Hour * time.Duration(info.ExpiredHour))
 	token, err := genJwtExp(jt, expire)
 	if err != nil {
 		return nil, errors.New("generate token failed")
 	}
-
-	//err = userdao.Dao.SetTokenVersion(jt.Uid, jt.Device, jt.Ver, time.Duration(jt.ExpiresAt))
-	//if err != nil {
-	//	return "", fmt.Errorf("generate token failed")
-	//}
-
 	return &auth.Token{Token: token}, nil
 }

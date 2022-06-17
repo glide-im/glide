@@ -38,6 +38,7 @@ func NewHandler(store store.MessageStore, auth auth.Interface) (*MessageHandler,
 	ret.AddHandler(messaging.NewActionHandler(messages.ActionClientCustom, ret.handleClientCustom))
 	ret.AddHandler(messaging.NewActionHandler(messages.ActionAckGroupMsg, ret.handleAckGroupMsgRequest))
 	ret.AddHandler(messaging.NewActionHandler(messages.ActionApiAuth, ret.handleAuth))
+	ret.AddHandler(&InternalHandler{})
 	return ret, nil
 }
 

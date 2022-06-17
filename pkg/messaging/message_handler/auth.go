@@ -28,26 +28,40 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 	}
 	r, err := d.auth.Auth(&info, &t)
 
-	if err == nil && r.Success {
+	if err != nil {
+		return err
+	}
+
+	if r.Success {
 		respMsg := messages.NewMessage(msg.Seq, messages.ActionApiSuccess, r.Response)
 		jwtResp, ok := r.Response.(*jwt_auth.Response)
 		if !ok {
-			resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, nil)
+			resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, "internal error")
 			d.enqueueMessage(c.ID, resp)
 			return errors.New("invalid response type: expected *jwt_auth.Response")
 		}
-		id2 := gate.NewID("", jwtResp.Uid, jwtResp.Device)
-		err = d.def.GetClientInterface().SetClientID(c.ID, id2)
-		if gateway.IsAlreadyExist(err) {
-			_ = d.def.GetClientInterface().ExitClient(id2)
-			err = d.def.GetClientInterface().SetClientID(c.ID, id2)
-		}
-		if gateway.IsClientNotExist(err) {
+
+		newID := gate.NewID("", jwtResp.Uid, jwtResp.Device)
+		err = d.def.GetClientInterface().SetClientID(c.ID, newID)
+
+		if gateway.IsIDAlreadyExist(err) {
+			err = d.def.GetClientInterface().ExitClient(newID)
+			if err != nil {
+				return err
+			}
+			err = d.def.GetClientInterface().SetClientID(c.ID, newID)
+			if err != nil {
+				return err
+			}
+		} else if gateway.IsClientNotExist(err) {
 			return errors.New("auth client not exist")
+		} else if err != nil {
+			return err
 		}
-		d.enqueueMessage(id2, respMsg)
+
+		d.enqueueMessage(newID, respMsg)
 	} else {
-		resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, r.Response)
+		resp := messages.NewMessage(msg.Seq, messages.ActionApiFailed, r.Msg)
 		d.enqueueMessage(c.ID, resp)
 	}
 	return nil

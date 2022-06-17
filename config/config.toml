@@ -5,7 +5,7 @@ JwtSecret = "secret"
 ID = "node1"
 
 [MySql]
-Host = "dengzii.com"
+Host = "localhost"
 Port = 3306
 Username = "go_im_test"
 Password = ""
@@ -13,7 +13,7 @@ Db = "go_im_test"
 Charset = "utf8mb4"
 
 [Redis]
-Host = "dengzii.com"
+Host = "localhost"
 Port = 6378
 Password = ""
 Db = 9

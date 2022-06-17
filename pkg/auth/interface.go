@@ -6,6 +6,7 @@ type Token struct {
 
 type Result struct {
 	Success  bool
+	Msg      string
 	Response interface{}
 }
 
