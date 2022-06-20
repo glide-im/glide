@@ -16,8 +16,9 @@ func (d *MessageHandler) handleAckRequest(c *gate.Info, msg *messages.GlideMessa
 		return nil
 	}
 	ackNotify := messages.NewMessage(0, messages.ActionAckNotify, ackMsg)
+
 	// 通知发送者, 对方已收到消息
-	d.enqueueMessage("", ackNotify)
+	d.dispatchAllDevice(ackMsg.From, ackNotify)
 	return nil
 }
 

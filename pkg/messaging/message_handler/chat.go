@@ -15,25 +15,34 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 	msg.From = m.From
 	msg.To = m.To
 
-	// 保存消息
 	if m.GetAction() != messages.ActionChatMessageResend {
 		err := d.store.StoreMessage(msg)
 		if err != nil {
-			logger.E("save chat message error %v", err)
+			logger.E("store chat message error %v", err)
 			return err
 		}
 	}
 
-	// 告诉客户端服务端已收到
-	_ = d.ackChatMessage(c, msg.Mid)
-
-	// 对方不在线, 下发确认包
-	if !d.def.GetClientInterface().IsOnline(gate.NewID2(msg.To)) {
-		_ = d.ackNotifyMessage(c, msg.Mid)
-		return d.dispatchOffline(c, m)
-	} else {
-		return d.dispatchOnline(c, msg)
+	// sender resend message to receiver, server has already acked it
+	// does the server should not ack it again ?
+	if m.GetAction() != messages.ActionChatMessageResend {
+		err := d.ackChatMessage(c, msg.Mid)
+		if err != nil {
+			logger.E("ack chat message error %v", err)
+		}
 	}
+
+	pushMsg := messages.NewMessage(0, messages.ActionChatMessage, msg)
+
+	if !d.dispatchAllDevice(msg.To, pushMsg) {
+		// receiver offline, send offline message, and ack message
+		err := d.ackNotifyMessage(c, msg.Mid)
+		if err != nil {
+			logger.E("ack notify message error %v", err)
+		}
+		return d.dispatchOffline(c, m)
+	}
+	return nil
 }
 
 func (d *MessageHandler) handleChatRecallMessage(c *gate.Info, msg *messages.GlideMessage) error {
@@ -67,4 +76,22 @@ func (d *MessageHandler) dispatchOnline(c *gate.Info, msg *messages.ChatMessage)
 	msg.From = c.ID.UID()
 	dispatchMsg := messages.NewMessage(-1, messages.ActionChatMessage, receiverMsg)
 	return d.def.GetClientInterface().EnqueueMessage(c.ID, dispatchMsg)
+}
+
+// TODO optimize 2022-6-20 11:18:24
+func (d *MessageHandler) dispatchAllDevice(uid string, m *messages.GlideMessage) bool {
+	devices := []string{"", "1", "2", "3"}
+	ok := false
+	for _, device := range devices {
+		id := gate.NewID("", uid, device)
+		if d.def.GetClientInterface().IsOnline(id) {
+			err := d.def.GetClientInterface().EnqueueMessage(id, m)
+			if err != nil {
+				logger.E("dispatch message error %v", err)
+			} else {
+				ok = true
+			}
+		}
+	}
+	return ok
 }

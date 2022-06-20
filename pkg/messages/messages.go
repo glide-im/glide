@@ -13,17 +13,17 @@ type ChatMessage struct {
 
 // ClientCustom client custom message, server does not store to database.
 type ClientCustom struct {
-	From    int64  `json:"from"`
-	To      int64  `json:"to"`
+	From    string `json:"from"`
+	To      string `json:"to"`
 	Type    int32  `json:"type"`
 	Content string `json:"content"`
 }
 
 // AckRequest 接收者回复给服务端确认收到消息
 type AckRequest struct {
-	Seq  int64 `json:"seq"`
-	Mid  int64 `json:"mid"`
-	From int64 `json:"from"`
+	Seq  int64  `json:"seq"`
+	Mid  int64  `json:"mid"`
+	From string `json:"from"`
 }
 
 // AckGroupMessage 发送群消息服务器回执
