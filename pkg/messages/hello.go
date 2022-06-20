@@ -1,8 +1,8 @@
 package messages
 
 type Hello struct {
-	ClientVersion string `json:"client_version"`
+	ClientVersion string `json:"client_version,omitempty"`
 
-	ClientName string `json:"client_name"`
-	ClientType string `json:"client_type"`
+	ClientName string `json:"client_name,omitempty"`
+	ClientType string `json:"client_type,omitempty"`
 }
