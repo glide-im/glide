@@ -158,18 +158,19 @@ func (c *Client) runRead() {
 	defer func() {
 		err := recover()
 		if err != nil {
-			logger.E("read message error", err)
+			logger.E("read message panic: %v", err)
 			c.Exit()
 		}
 	}()
 
 	readChan, done := messageReader.ReadCh(c.conn)
 	var closeReason string
-
 	for {
 		select {
 		case <-c.closeReadCh:
-			closeReason = "closed initiative"
+			if closeReason == "" {
+				closeReason = "closed initiative"
+			}
 			goto STOP
 		case <-c.hbC.C:
 			c.hbLost++
@@ -181,16 +182,24 @@ func (c *Client) runRead() {
 			c.hbC = tw.After(c.config.ClientHeartbeatDuration)
 			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, nil))
 		case msg := <-readChan:
+			if msg == nil {
+				closeReason = "readCh closed"
+				c.Exit()
+				continue
+			}
 			if msg.err != nil {
-				if !c.IsRunning() {
-					closeReason = "read message error, " + msg.err.Error()
-					c.Exit()
+				if messages.IsDecodeError(msg.err) {
+					_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, msg.err.Error()))
+					continue
 				}
+				closeReason = msg.err.Error()
+				c.Exit()
 				continue
 			}
 			if c.info.ID == "" {
 				closeReason = "client not logged"
 				c.Exit()
+				break
 			}
 			c.hbLost = 0
 			c.hbC.Cancel()
@@ -224,7 +233,9 @@ func (c *Client) runWrite() {
 	for {
 		select {
 		case <-c.closeWriteCh:
-			closeReason = "closed initiative"
+			if closeReason == "" {
+				closeReason = "closed initiative"
+			}
 			goto STOP
 		case <-c.hbS.C:
 			if !c.IsRunning() {
@@ -235,8 +246,9 @@ func (c *Client) runWrite() {
 			c.hbS = tw.After(c.config.ServerHeartbeatDuration)
 		case m := <-c.messages:
 			if m == nil {
-				closeReason = "messages chan maybe closed"
+				closeReason = "message is nil, maybe client has closed"
 				c.Exit()
+				break
 			}
 			c.write2Conn(m)
 			c.hbS.Cancel()

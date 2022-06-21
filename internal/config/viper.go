@@ -50,6 +50,7 @@ func MustLoad() {
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
+	viper.AddConfigPath("./_config_local")
 	viper.AddConfigPath("/etc/")
 	viper.AddConfigPath("$HOME/.config/")
 

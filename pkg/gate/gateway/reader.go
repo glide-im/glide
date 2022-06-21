@@ -73,6 +73,9 @@ func (d *defaultReader) ReadCh(conn conn.Connection) (<-chan *readerRes, chan<- 
 				if err != nil {
 					res.err = err
 					c <- res
+					if messages.IsDecodeError(err) {
+						continue
+					}
 					goto CLOSE
 				} else {
 					res.m = m

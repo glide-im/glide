@@ -4,11 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"google.golang.org/protobuf/proto"
+	"strings"
 )
 
 var ProtoBuffCodec = protobufCodec{}
 var JsonCodec = jsonCodec{}
 var DefaultCodec = JsonCodec
+
+var errDecode = "message decode error: "
+
+func IsDecodeError(err error) bool {
+	return err != nil && strings.HasPrefix(err.Error(), errDecode)
+}
 
 type Codec interface {
 	Decode(data []byte, i interface{}) error
@@ -38,7 +45,11 @@ type jsonCodec struct {
 }
 
 func (j jsonCodec) Decode(data []byte, i interface{}) error {
-	return json.Unmarshal(data, i)
+	err := json.Unmarshal(data, i)
+	if err != nil {
+		return errors.New(errDecode + err.Error())
+	}
+	return nil
 }
 
 func (j jsonCodec) Encode(i interface{}) ([]byte, error) {

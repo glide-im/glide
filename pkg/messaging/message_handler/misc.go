@@ -28,6 +28,6 @@ func (d *MessageHandler) handleClientCustom(c *gate.Info, msg *messages.GlideMes
 		return nil
 	}
 	m2 := messages.NewMessage(0, messages.ActionClientCustom, m)
-	d.enqueueMessage("", m2)
+	d.dispatchAllDevice(msg.To, m2)
 	return nil
 }
