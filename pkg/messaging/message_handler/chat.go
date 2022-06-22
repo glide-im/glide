@@ -9,7 +9,7 @@ import (
 // handleChatMessage 分发用户单聊消息
 func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessage) error {
 	msg := new(messages.ChatMessage)
-	if !d.unwrap(c, m, msg) {
+	if !d.unmarshalData(c, m, msg) {
 		return nil
 	}
 	msg.From = m.From
@@ -67,6 +67,9 @@ func (d *MessageHandler) ackChatMessage(c *gate.Info, mid int64) error {
 // dispatchOffline 接收者不在线, 离线推送
 func (d *MessageHandler) dispatchOffline(c *gate.Info, message *messages.GlideMessage) error {
 	logger.D("dispatch offline message %v %v", c.ID, message)
+	if d.offlineHandleFn != nil {
+		d.offlineHandleFn(d, c, message)
+	}
 	return nil
 }
 

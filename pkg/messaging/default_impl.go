@@ -90,6 +90,10 @@ func (d *MessageInterfaceImpl) SetSubscription(g subscription.Interface) {
 	d.subscription = g
 }
 
+func (d *MessageInterfaceImpl) SetNotifyErrorOnServer(enable bool) {
+	d.notifyOnSrvErr = enable
+}
+
 func (d *MessageInterfaceImpl) GetClientInterface() gate.Gateway {
 	return d.gate
 }

@@ -29,7 +29,7 @@ func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage
 
 func (d *MessageHandler) handleAckGroupMsgRequest(c *gate.Info, msg *messages.GlideMessage) error {
 	ack := new(messages.AckGroupMessage)
-	if !d.unwrap(c, msg, ack) {
+	if !d.unmarshalData(c, msg, ack) {
 		return nil
 	}
 	//err := msgdao.UpdateGroupMemberMsgState(ack.Gid, 0, ack.Mid, ack.Seq)
