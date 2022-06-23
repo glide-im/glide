@@ -35,7 +35,10 @@ func (s *Task) call() {
 		if s.fn != nil {
 			s.fn()
 		}
-		s.C <- struct{}{}
+		select {
+		case s.C <- struct{}{}:
+		default:
+		}
 	})
 }
 
