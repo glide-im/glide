@@ -60,6 +60,18 @@ func NewServer(options *Options) (*Impl, error) {
 	return ret, nil
 }
 
+// GetAll returns all clients in the gateway.
+func (c *Impl) GetAll() map[gate.ID]gate.Info {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	result := map[gate.ID]gate.Info{}
+	for id, client := range c.clients {
+		result[id] = client.GetInfo()
+	}
+	return result
+}
+
 func (c *Impl) SetMessageHandler(h gate.MessageHandler) {
 	c.msgHandler = h
 }
@@ -69,6 +81,8 @@ func (c *Impl) AddClient(cs gate.Client) {
 	defer c.mu.Unlock()
 
 	id := cs.GetInfo().ID
+	id.SetGateway(c.id)
+
 	c.clients[id] = cs
 	c.msgHandler(nil, messages.NewMessage(0, messages.ActionInternalOnline, id))
 }
@@ -154,5 +168,6 @@ func (c *Impl) IsOnline(id gate.ID) bool {
 	defer c.mu.RUnlock()
 
 	id.SetGateway(c.id)
-	return c.clients[id] != nil
+	client, ok := c.clients[id]
+	return ok && client != nil && client.IsRunning()
 }

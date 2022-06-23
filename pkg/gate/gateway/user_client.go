@@ -173,6 +173,9 @@ func (c *Client) runRead() {
 			}
 			goto STOP
 		case <-c.hbC.C:
+			if !c.IsRunning() {
+				goto STOP
+			}
 			c.hbLost++
 			if c.hbLost > c.config.HeartbeatLostLimit {
 				closeReason = "heartbeat lost"
@@ -239,7 +242,8 @@ func (c *Client) runWrite() {
 			goto STOP
 		case <-c.hbS.C:
 			if !c.IsRunning() {
-				continue
+				closeReason = "client not running"
+				goto STOP
 			}
 			_ = c.EnqueueMessage(messages.NewMessage(0, messages.ActionHeartbeat, nil))
 			c.hbS.Cancel()
