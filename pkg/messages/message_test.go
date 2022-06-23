@@ -7,8 +7,8 @@ import (
 
 func TestGlideMessage_Decode(t *testing.T) {
 	cm := ClientCustom{
-		From:    1,
-		To:      2,
+		From:    "1",
+		To:      "2",
 		Type:    3,
 		Content: "-",
 	}

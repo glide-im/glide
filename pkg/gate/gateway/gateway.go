@@ -65,6 +65,9 @@ func (c *Impl) SetMessageHandler(h gate.MessageHandler) {
 }
 
 func (c *Impl) AddClient(cs gate.Client) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	id := cs.GetInfo().ID
 	c.clients[id] = cs
 	c.msgHandler(nil, messages.NewMessage(0, messages.ActionInternalOnline, id))
