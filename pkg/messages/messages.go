@@ -13,9 +13,7 @@ type ChatMessage struct {
 
 // ClientCustom client custom message, server does not store to database.
 type ClientCustom struct {
-	From    string `json:"from,omitempty"`
-	To      string `json:"to,omitempty"`
-	Type    int32  `json:"type,omitempty"`
+	Type    string `json:"type,omitempty"`
 	Content string `json:"content,omitempty"`
 }
 
