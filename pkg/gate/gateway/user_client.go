@@ -272,10 +272,11 @@ func (c *Client) Exit() {
 	}
 	atomic.StoreInt32(&c.state, stateClosed)
 
+	id := c.info.ID
 	// exit by client self, remove client from manager
-	if c.mgr != nil && c.info.ID != "" {
+	if c.mgr != nil && id != "" {
+		_ = c.mgr.ExitClient(id)
 		c.SetID("")
-		_ = c.mgr.ExitClient(c.info.ID)
 		c.mgr = nil
 	}
 	c.stopReadWrite()
