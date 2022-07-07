@@ -21,13 +21,3 @@ func (d *MessageHandler) handleAckRequest(c *gate.Info, msg *messages.GlideMessa
 	d.dispatchAllDevice(ackMsg.From, ackNotify)
 	return nil
 }
-
-func (d *MessageHandler) handleClientCustom(c *gate.Info, msg *messages.GlideMessage) error {
-	m := new(messages.ClientCustom)
-	if !d.unmarshalData(c, msg, m) {
-		return nil
-	}
-	m2 := messages.NewMessage(0, messages.ActionClientCustom, m)
-	d.dispatchAllDevice(msg.To, m2)
-	return nil
-}

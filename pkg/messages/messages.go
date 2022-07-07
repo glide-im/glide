@@ -13,8 +13,8 @@ type ChatMessage struct {
 
 // ClientCustom client custom message, server does not store to database.
 type ClientCustom struct {
-	Type    string `json:"type,omitempty"`
-	Content string `json:"content,omitempty"`
+	Type    string      `json:"type,omitempty"`
+	Content interface{} `json:"content,omitempty"`
 }
 
 // AckRequest 接收者回复给服务端确认收到消息

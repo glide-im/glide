@@ -14,7 +14,6 @@ const (
 	ActionChatMessageResend = "message.chat.resend"
 	ActionGroupMessage      = "message.group"
 	ActionMessageFailed     = "message.failed.send"
-	ActionClientCustom      = "message.cli"
 
 	ActionNotifyNeedAuth      = "notify.auth"
 	ActionNotifyKickOut       = "notify.kickout"

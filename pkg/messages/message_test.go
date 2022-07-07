@@ -6,9 +6,9 @@ import (
 )
 
 func TestGlideMessage_Decode(t *testing.T) {
-	cm := ClientCustom{
-		Type:    "3",
-		Content: "-",
+	cm := AckMessage{
+		Mid: 1,
+		Seq: 2,
 	}
 	message := NewMessage(1, ActionHeartbeat, &cm)
 	bytes, err := JsonCodec.Encode(message)
