@@ -274,7 +274,7 @@ func (c *Client) Exit() {
 
 	id := c.info.ID
 	// exit by client self, remove client from manager
-	if c.mgr != nil && id != "" && c.mgr.IsOnline(c.info.ID) {
+	if c.mgr != nil && id != "" {
 		_ = c.mgr.ExitClient(id)
 	}
 	c.SetID("")

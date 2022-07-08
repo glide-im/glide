@@ -128,6 +128,7 @@ func (c *Impl) ExitClient(id gate.ID) error {
 		return errors.New(errClientNotExist)
 	}
 
+	cli.SetID("")
 	delete(c.clients, id)
 	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOffline, id))
 	cli.Exit()
