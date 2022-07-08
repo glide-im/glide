@@ -1,23 +1,27 @@
 package messaging
 
 import (
-	"errors"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
-	"github.com/glide-im/glide/pkg/store"
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/panjf2000/ants/v2"
 )
+
+type Options struct {
+	NotifyServerError     bool
+	MaxMessageConcurrency int
+}
+
+func onMessageHandlerPanic(i interface{}) {
+	logger.E("MessageInterfaceImpl panic: %v", i)
+}
 
 // MessageInterfaceImpl default implementation of the messaging interface.
 type MessageInterfaceImpl struct {
 
 	// execPool 100 capacity goroutine pool, 假设每个消息处理需要10ms, 一个协程则每秒能处理100条消息
 	execPool *ants.Pool
-
-	// store express message store interface
-	store store.MessageStore
 
 	// hc message handler chain
 	hc *handlerChain
@@ -29,24 +33,18 @@ type MessageInterfaceImpl struct {
 	notifyOnSrvErr bool
 }
 
-func NewDefaultImpl(store store.MessageStore) (*MessageInterfaceImpl, error) {
-
-	if store == nil {
-		return nil, errors.New("store is nil")
-	}
+func NewDefaultImpl(options *Options) (*MessageInterfaceImpl, error) {
 
 	ret := MessageInterfaceImpl{
-		notifyOnSrvErr: true,
-		store:          store,
+		notifyOnSrvErr: options.NotifyServerError,
 		hc:             &handlerChain{},
 	}
 
 	var err error
-	ret.execPool, err = ants.NewPool(1_0000,
+	ret.execPool, err = ants.NewPool(
+		options.MaxMessageConcurrency,
 		ants.WithNonblocking(true),
-		ants.WithPanicHandler(func(i interface{}) {
-			logger.E("message impl panic: %v", i)
-		}),
+		ants.WithPanicHandler(onMessageHandlerPanic),
 		ants.WithPreAlloc(false),
 	)
 	if err != nil {

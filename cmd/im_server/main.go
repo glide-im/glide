@@ -4,9 +4,8 @@ import (
 	"github.com/glide-im/glide/internal/config"
 	"github.com/glide-im/glide/internal/im_server"
 	"github.com/glide-im/glide/internal/store_db"
-	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/bootstrap"
-	"github.com/glide-im/glide/pkg/messaging/message_handler"
+	"github.com/glide-im/glide/pkg/messaging"
 	"github.com/glide-im/glide/pkg/subscription/subscription_impl"
 )
 
@@ -19,12 +18,10 @@ func main() {
 		panic(err)
 	}
 
-	auth := jwt_auth.NewAuthorizeImpl(config.WsServer.JwtSecret)
-	dbStore, err := store_db.New(config.MySql)
-	if err != nil {
-		panic(err)
-	}
-	handler, err := message_handler.NewHandler(dbStore, auth)
+	handler, err := messaging.NewDefaultImpl(&messaging.Options{
+		NotifyServerError:     true,
+		MaxMessageConcurrency: 10_0000,
+	})
 	if err != nil {
 		panic(err)
 	}
