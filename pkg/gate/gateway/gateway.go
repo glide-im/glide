@@ -9,6 +9,15 @@ import (
 	"sync"
 )
 
+// Interface is gateway default implements.
+type Interface interface {
+	gate.Gateway
+	GetClient(id gate.ID) gate.Client
+	GetAll() map[gate.ID]gate.Info
+	SetMessageHandler(h gate.MessageHandler)
+	AddClient(cs gate.Client)
+}
+
 type Options struct {
 	// ID is the gateway id.
 	ID string
@@ -58,6 +67,11 @@ func NewServer(options *Options) (*Impl, error) {
 	}
 	ret.pool = pool
 	return ret, nil
+}
+
+// GetClient returns the client with specified id
+func (c *Impl) GetClient(id gate.ID) gate.Client {
+	return c.clients[id]
 }
 
 // GetAll returns all clients in the gateway.
