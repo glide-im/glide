@@ -71,6 +71,8 @@ func NewServer(options *Options) (*Impl, error) {
 
 // GetClient returns the client with specified id
 func (c *Impl) GetClient(id gate.ID) gate.Client {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.clients[id]
 }
 
