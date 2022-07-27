@@ -10,27 +10,7 @@ const (
 	ActionHeartbeat                  = "heartbeat"
 	ActionNotifyUnknownAction        = "notify.unknown.action"
 
-	ActionChatMessage       = "message.chat"
-	ActionChatMessageResend = "message.chat.resend"
-	ActionGroupMessage      = "message.group"
-	ActionMessageFailed     = "message.failed.send"
-
-	ActionNotifyNeedAuth      = "notify.auth"
-	ActionNotifyKickOut       = "notify.kickout"
-	ActionNotifyNewContact    = "notify.contact"
-	ActionNotifyGroup         = "notify.group"
-	ActionNotifyAccountLogin  = "notify.login"
-	ActionNotifyAccountLogout = "notify.logout"
-	ActionNotifyError         = "notify.error"
-
-	ActionAckRequest  = "ack.request"
-	ActionAckGroupMsg = "ack.group.msg"
-	ActionAckMessage  = "ack.message"
-	ActionAckNotify   = "ack.notify"
-
-	ActionApiAuth    = "api.auth"
-	ActionApiFailed  = "api.failed"
-	ActionApiSuccess = "api.success"
+	ActionNotifyError = "notify.error"
 
 	ActionInternalOnline  = "internal.online"
 	ActionInternalOffline = "internal.offline"
