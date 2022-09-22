@@ -2,13 +2,27 @@ package messages
 
 // ChatMessage chat message in single/group chat
 type ChatMessage struct {
-	Mid     int64  `json:"mid,omitempty"`
-	Seq     int64  `json:"seq,omitempty"`
-	From    string `json:"from,omitempty"`
-	To      string `json:"to,omitempty"`
-	Type    int32  `json:"type,omitempty"`
+	/// client message id to identity unique a message.
+	/// for identity a message
+	/// and wait for the server ack receipt and return `mid` for it.
+	CliMid int64 `json:"cliMid,omitempty"`
+	/// server message id in the database.
+	// when a client sends a message for the first time or  client retry to send a message that
+	// the server does not ack, the 'Mid' is empty.
+	/// if this field is not empty that this message is server acked, need not store to database again.
+	Mid int64 `json:"mid,omitempty"`
+	/// message sequence for a chat, use to check message whether the message lost.
+	Seq int64 `json:"seq,omitempty"`
+	/// message sender
+	From string `json:"from,omitempty"`
+	/// message send to
+	To string `json:"to,omitempty"`
+	/// message type
+	Type int32 `json:"type,omitempty"`
+	/// message content
 	Content string `json:"content,omitempty"`
-	SendAt  int64  `json:"sendAt,omitempty"`
+	/// message send time, server store message time.
+	SendAt int64 `json:"sendAt,omitempty"`
 }
 
 // ClientCustom client custom message, server does not store to database.
@@ -26,13 +40,16 @@ type AckRequest struct {
 
 // AckGroupMessage 发送群消息服务器回执
 type AckGroupMessage struct {
-	Gid int64 `json:"gid,omitempty"`
-	Mid int64 `json:"mid,omitempty"`
-	Seq int64 `json:"seq,omitempty"`
+	CliMid int64 `json:"cliMid,omitempty"`
+	Gid    int64 `json:"gid,omitempty"`
+	Mid    int64 `json:"mid,omitempty"`
+	Seq    int64 `json:"seq,omitempty"`
 }
 
 // AckMessage 服务端通知发送者的服务端收到消息
 type AckMessage struct {
+	CliMid int64 `json:"cliMid,omitempty"`
+	/// message id to tall the client
 	Mid int64 `json:"mid,omitempty"`
 	Seq int64 `json:"seq,omitempty"`
 }
