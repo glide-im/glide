@@ -100,7 +100,7 @@ func (c *Impl) AddClient(cs gate.Client) {
 	id.SetGateway(c.id)
 
 	c.clients[id] = cs
-	c.msgHandler(nil, messages.NewMessage(0, messages.ActionInternalOnline, id))
+	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOnline, id))
 }
 
 // SetClientID replace the oldID with newID of the client.
