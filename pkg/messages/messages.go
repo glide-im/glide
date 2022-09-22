@@ -5,7 +5,7 @@ type ChatMessage struct {
 	/// client message id to identity unique a message.
 	/// for identity a message
 	/// and wait for the server ack receipt and return `mid` for it.
-	CliMid int64 `json:"cliMid,omitempty"`
+	CliMid string `json:"cliMid,omitempty"`
 	/// server message id in the database.
 	// when a client sends a message for the first time or  client retry to send a message that
 	// the server does not ack, the 'Mid' is empty.
@@ -40,15 +40,15 @@ type AckRequest struct {
 
 // AckGroupMessage 发送群消息服务器回执
 type AckGroupMessage struct {
-	CliMid int64 `json:"cliMid,omitempty"`
-	Gid    int64 `json:"gid,omitempty"`
-	Mid    int64 `json:"mid,omitempty"`
-	Seq    int64 `json:"seq,omitempty"`
+	CliMid string `json:"cliMid,omitempty"`
+	Gid    int64  `json:"gid,omitempty"`
+	Mid    int64  `json:"mid,omitempty"`
+	Seq    int64  `json:"seq,omitempty"`
 }
 
 // AckMessage 服务端通知发送者的服务端收到消息
 type AckMessage struct {
-	CliMid int64 `json:"cliMid,omitempty"`
+	CliMid string `json:"cliMid,omitempty"`
 	/// message id to tall the client
 	Mid int64 `json:"mid,omitempty"`
 	Seq int64 `json:"seq,omitempty"`
