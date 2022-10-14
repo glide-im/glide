@@ -283,13 +283,14 @@ func (g *Channel) checkMsgQueue() error {
 		g.sleepTimer = tw.After(messageQueueTimeout)
 		for {
 			select {
-			case <-g.sleepTimer.C:
-				g.sleepTimer.Cancel()
-				if g.activeAt.Add(messageQueueTimeout).Before(time.Now()) {
-					goto REST
-				} else {
-					g.sleepTimer = tw.After(messageQueueTimeout)
-				}
+			// TODO fixme
+			//case <-g.sleepTimer.C:
+			//	g.sleepTimer.Cancel()
+			//	if g.activeAt.Add(messageQueueTimeout).Before(time.Now()) {
+			//		goto REST
+			//	} else {
+			//		g.sleepTimer = tw.After(messageQueueTimeout)
+			//	}
 			case m := <-g.messages:
 				if m == nil {
 					goto REST
