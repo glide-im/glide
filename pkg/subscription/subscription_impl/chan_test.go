@@ -60,6 +60,25 @@ func TestGroup_Publish(t *testing.T) {
 	time.Sleep(time.Millisecond * 50)
 }
 
+func TestChannel_Sleep(t *testing.T) {
+	channel := mockNewChannel("test")
+	err2 := channel.Subscribe("test", normalOpts)
+	assert.NoError(t, err2)
+	msg := &PublishMessage{
+		From:    "test",
+		Type:    TypeNotify,
+		Message: &messages.GlideMessage{},
+	}
+	go func() {
+		for i := 0; i < 100; i++ {
+			time.Sleep(time.Millisecond * 50)
+			_ = channel.Publish(msg)
+		}
+	}()
+
+	time.Sleep(time.Millisecond * 50)
+}
+
 func TestChannel_PublishErr(t *testing.T) {
 	channel := mockNewChannel("test")
 

@@ -283,14 +283,13 @@ func (g *Channel) checkMsgQueue() error {
 		g.sleepTimer = tw.After(messageQueueTimeout)
 		for {
 			select {
-			// TODO fixme
-			//case <-g.sleepTimer.C:
-			//	g.sleepTimer.Cancel()
-			//	if g.activeAt.Add(messageQueueTimeout).Before(time.Now()) {
-			//		goto REST
-			//	} else {
-			//		g.sleepTimer = tw.After(messageQueueTimeout)
-			//	}
+			case <-g.sleepTimer.C:
+				g.sleepTimer.Cancel()
+				if g.activeAt.Add(messageQueueTimeout).Before(time.Now()) {
+					goto REST
+				} else {
+					g.sleepTimer = tw.After(messageQueueTimeout)
+				}
 			case m := <-g.messages:
 				if m == nil {
 					goto REST
@@ -302,17 +301,23 @@ func (g *Channel) checkMsgQueue() error {
 		}
 	REST:
 		dropped := 0
-		for range g.messages {
-			dropped++
-			atomic.StoreInt32(&g.queued, -1)
+		if atomic.LoadInt32(&g.queued) > 0 {
+			for {
+				_, ok := <-g.messages
+				if !ok {
+					break
+				}
+				dropped++
+				atomic.StoreInt32(&g.queued, -1)
+			}
 		}
 		if dropped > 0 {
 			logger.W("chan %s message queue stopped, %d message(s) have been dropped", g.id, dropped)
 		} else {
 			logger.D("chan %s message queue stopped", g.id)
 		}
-		atomic.StoreInt32(&g.queueRunning, 0)
 		atomic.StoreInt32(&g.queued, 0)
+		atomic.StoreInt32(&g.queueRunning, 0)
 	}()
 	return nil
 }
@@ -323,8 +328,21 @@ func (g *Channel) push(message *PublishMessage) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	for subscriberID, sInfo := range g.subscribers {
+	var received map[subscription.SubscriberID]interface{} = nil
 
+	if message.To != nil {
+		for _, id := range message.To {
+			received[id] = nil
+		}
+	}
+
+	for subscriberID, sInfo := range g.subscribers {
+		if received != nil && len(received) > 0 {
+			_, contained := received[subscriberID]
+			if !contained {
+				continue
+			}
+		}
 		if !sInfo.canRead() {
 			continue
 		}

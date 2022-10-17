@@ -22,16 +22,29 @@ const (
 	TypeSystem
 )
 
-// PublishMessage is the message published to the group.
+// PublishMessage is the message published to the channel.
 type PublishMessage struct {
-	From    subscription.SubscriberID
-	Seq     int64
+	// From the message sender.
+	From subscription.SubscriberID
+	// To specified receiver, empty express all subscribers will be received.
+	To  []subscription.SubscriberID
+	Seq int64
+	// Type the message type.
 	Type    int
 	Message *messages.GlideMessage
 }
 
 func (p *PublishMessage) GetFrom() subscription.SubscriberID {
 	return p.From
+}
+
+func (p *PublishMessage) GetChatMessage() (*messages.ChatMessage, error) {
+	cm := &messages.ChatMessage{}
+	err := p.Message.Data.Deserialize(cm)
+	if err != nil {
+		return nil, err
+	}
+	return cm, nil
 }
 
 func IsUnknownMessageType(err error) bool {
