@@ -3,6 +3,7 @@ package messages
 import (
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 var messageVersion int64 = 1
@@ -81,6 +82,10 @@ func (d *Data) MarshalJSON() ([]byte, error) {
 	return JsonCodec.Encode(d.des)
 }
 
+func (d *Data) GetData() interface{} {
+	return d.des
+}
+
 func (d *Data) Deserialize(i interface{}) error {
 	if d == nil {
 		return errors.New("data is nil")
@@ -88,6 +93,13 @@ func (d *Data) Deserialize(i interface{}) error {
 	s, ok := d.des.([]byte)
 	if ok {
 		return JsonCodec.Decode(s, i)
+	} else {
+		t1 := reflect.TypeOf(i)
+		t2 := reflect.TypeOf(d.des)
+		if t1 == t2 {
+			reflect.ValueOf(i).Elem().Set(reflect.ValueOf(d.des).Elem())
+			return nil
+		}
 	}
 	return errors.New("invalid data")
 }

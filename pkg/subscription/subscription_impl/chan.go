@@ -236,8 +236,7 @@ func (g *Channel) enqueueNotify(msg *PublishMessage) error {
 
 func (g *Channel) enqueue(m *PublishMessage) error {
 
-	cm := messages.ChatMessage{}
-	err := m.Message.Data.Deserialize(&cm)
+	cm, err := m.GetChatMessage()
 	if err != nil {
 		return err
 	}

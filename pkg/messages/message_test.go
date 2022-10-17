@@ -21,6 +21,20 @@ func TestGlideMessage_Decode(t *testing.T) {
 	assert.Equal(t, m.Action, message.Action)
 }
 
+func TestData_Deserialize(t *testing.T) {
+	m := NewMessage(1, ActionHello, &ChatMessage{
+		Mid:  11,
+		Seq:  2,
+		From: "4",
+	})
+	cm := ChatMessage{}
+	err := m.Data.Deserialize(&cm)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, cm.From, m.From)
+}
+
 func TestData_MarshalJSON(t *testing.T) {
 
 	data := NewData("foo")
