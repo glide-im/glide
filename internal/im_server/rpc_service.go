@@ -3,7 +3,6 @@ package im_server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"github.com/glide-im/glide/im_service/proto"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
@@ -27,17 +26,18 @@ func RunRpcServer(options *rpc.ServerOptions, gate gate.Gateway, subscribe subsc
 	return server.Run()
 }
 
-func (r *RpcServer) SetClientID(ctx context.Context, request *proto.SetIDRequest, response *proto.Response) error {
-	err := r.gateway.SetClientID(gate.ID(request.OldId), gate.ID(request.NewId))
-	if err != nil {
-		response.Code = int32(proto.Response_ERROR)
-		response.Msg = err.Error()
-	}
-	return nil
-}
+func (r *RpcServer) UpdateClient(ctx context.Context, request *proto.UpdateClient, response *proto.Response) error {
+	id := gate.ID(request.GetId())
 
-func (r *RpcServer) ExitClient(ctx context.Context, request *proto.ExitClientRequest, response *proto.Response) error {
-	err := r.gateway.ExitClient(gate.ID(request.Id))
+	var err error
+	if request.GetClose() {
+		err = r.gateway.ExitClient(id)
+	}
+	if request.GetNewId() != "" {
+		// TODO
+		err = r.gateway.SetClientID(id, gate.ID(request.GetNewId()))
+
+	}
 	if err != nil {
 		response.Code = int32(proto.Response_ERROR)
 		response.Msg = err.Error()
@@ -61,11 +61,6 @@ func (r *RpcServer) EnqueueMessage(ctx context.Context, request *proto.EnqueueMe
 		response.Msg = err.Error()
 	}
 	return nil
-}
-
-func (r *RpcServer) Status(ctx context.Context, request interface{}, response interface{}) error {
-	// TODO 服务状态是否应该在这里收集 ?
-	return errors.New("not implements")
 }
 
 ////////////////////////////////////// Subscription //////////////////////////////////////////////

@@ -16,6 +16,7 @@ message Response {
 message UpdateClient {
   string id = 1;
   bool close = 2;
+  string newId = 3;
 }
 
 message EnqueueMessageRequest {
