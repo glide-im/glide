@@ -4,7 +4,7 @@ StoreOfflineMessage = false # 是否保存离线消息(用户不在线时保存,
 
 [WsServer]  # WebSocket 服务配置
 Addr = "0.0.0.0"
-Port = 8080
+Port = 8083
 JwtSecret = "secret" # Jwt 生成的密匙
 ID = "node1" # 单机部署忽略
 

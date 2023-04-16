@@ -60,19 +60,10 @@ func NewHandlerWithOptions(opts *Options) (*MessageHandler, error) {
 	return ret, nil
 }
 
-func NewHandler(store store.MessageStore, auth auth.Interface) (*MessageHandler, error) {
-	return NewHandlerWithOptions(&Options{
-		MessageStore:           store,
-		OfflineHandleFn:        nil,
-		Auth:                   auth,
-		DontInitDefaultHandler: false,
-	})
-}
-
-// InitDefaultHandler add all default action handler.
-// The action and HandlerFunc will pass to callback, the return value of callback will set as action handler, callback
-// can be nil.
-func (d MessageHandler) InitDefaultHandler(callback func(action messages.Action, fn messaging.HandlerFunc) messaging.HandlerFunc) {
+// InitDefaultHandler
+// 初始化 message.Action 对应的默认 Handler, 部分类型的 Action 才有默认 Handler, 若要修改特定 Action 的默认 Handler 则可以在
+// callback 回调中返回你需要的即可, callback 参数 fn 既是该 action 对的默认 Handler.
+func (d *MessageHandler) InitDefaultHandler(callback func(action messages.Action, fn messaging.HandlerFunc) messaging.HandlerFunc) {
 	m := map[messages.Action]messaging.HandlerFunc{
 		messages2.ActionChatMessage:  d.handleChatMessage,
 		messages2.ActionGroupMessage: d.handleGroupMsg,

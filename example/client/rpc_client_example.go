@@ -51,9 +51,6 @@ func RpcGatewayClientExample() {
 	// 断开 uid 为 1 的设备 1
 	// 单体情况, 网关 id 传空即可
 	_ = cli.ExitClient(gate.NewID("", "1", "1"))
-
-	// 获取某个用户是否在线
-	cli.IsOnline(gate.NewID2("1"))
 }
 
 func RpcSubscriberClientExample() {

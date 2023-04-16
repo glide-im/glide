@@ -45,11 +45,6 @@ func (r *RpcServer) ExitClient(ctx context.Context, request *proto.ExitClientReq
 	return nil
 }
 
-func (r *RpcServer) IsOnline(ctx context.Context, request *proto.IsOnlineRequest, response *proto.IsOnlineResponse) error {
-	response.Online = r.gateway.IsOnline(gate.ID(request.Id))
-	return nil
-}
-
 func (r *RpcServer) EnqueueMessage(ctx context.Context, request *proto.EnqueueMessageRequest, response *proto.Response) error {
 
 	msg := messages.GlideMessage{}

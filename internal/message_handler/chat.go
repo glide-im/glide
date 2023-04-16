@@ -84,17 +84,13 @@ func (d *MessageHandler) dispatchOnline(c *gate.Info, msg *messages.ChatMessage)
 // TODO optimize 2022-6-20 11:18:24
 func (d *MessageHandler) dispatchAllDevice(uid string, m *messages.GlideMessage) bool {
 	devices := []string{"", "1", "2", "3"}
-	ok := false
+
 	for _, device := range devices {
 		id := gate.NewID("", uid, device)
-		if d.def.GetClientInterface().IsOnline(id) {
-			err := d.def.GetClientInterface().EnqueueMessage(id, m)
-			if err != nil {
-				logger.E("dispatch message error %v", err)
-			} else {
-				ok = true
-			}
+		err := d.def.GetClientInterface().EnqueueMessage(id, m)
+		if err != nil {
+			logger.E("dispatch message error %v", err)
 		}
 	}
-	return ok
+	return true
 }

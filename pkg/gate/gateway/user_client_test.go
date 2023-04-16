@@ -171,10 +171,6 @@ func (m mockGateway) ExitClient(id gate.ID) error {
 	return nil
 }
 
-func (m mockGateway) IsOnline(id gate.ID) bool {
-	return true
-}
-
 func (m mockGateway) EnqueueMessage(id gate.ID, message *messages.GlideMessage) error {
 	return nil
 }

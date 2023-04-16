@@ -32,10 +32,6 @@ func (c *Client) ExitClient(id gate.ID) error {
 	return c.gate.ExitClient(id)
 }
 
-func (c *Client) IsOnline(id gate.ID) bool {
-	return c.gate.IsOnline(id)
-}
-
 func (c *Client) EnqueueMessage(id gate.ID, message *messages.GlideMessage) error {
 	return c.gate.EnqueueMessage(id, message)
 }

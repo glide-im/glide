@@ -179,12 +179,3 @@ func (c *Impl) enqueueMessage(cli gate.Client, msg *messages.GlideMessage) error
 	}
 	return nil
 }
-
-func (c *Impl) IsOnline(id gate.ID) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	id.SetGateway(c.id)
-	client, ok := c.clients[id]
-	return ok && client != nil && client.IsRunning()
-}

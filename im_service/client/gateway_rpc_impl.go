@@ -35,6 +35,16 @@ type GatewayRpcImpl struct {
 	gate *GatewayRpcClient
 }
 
+func (i *GatewayRpcImpl) SetClientID(old gate.ID, new_ gate.ID) error {
+	//TODO implement me update client
+	panic("implement me")
+}
+
+func (i *GatewayRpcImpl) ExitClient(id gate.ID) error {
+	//TODO implement me update client
+	panic("implement me")
+}
+
 func NewGatewayRpcImplWithClient(client *rpc.BaseClient) *GatewayRpcImpl {
 	return &GatewayRpcImpl{
 		gate: &GatewayRpcClient{
@@ -49,46 +59,6 @@ func NewGatewayRpcImpl(opts *rpc.ClientOptions) (*GatewayRpcImpl, error) {
 		return nil, err
 	}
 	return NewGatewayRpcImplWithClient(cli), nil
-}
-
-func (i *GatewayRpcImpl) SetClientID(old gate.ID, new_ gate.ID) error {
-	ctx := context.TODO()
-	request := proto.SetIDRequest{
-		OldId: string(old),
-		NewId: string(new_),
-	}
-	response := proto.Response{}
-	err := i.gate.SetClientID(ctx, &request, &response)
-	if err != nil {
-		return errors.New(errRpcInvocation + err.Error())
-	}
-	return getResponseError(&response)
-}
-
-func (i *GatewayRpcImpl) ExitClient(id gate.ID) error {
-	ctx := context.TODO()
-	request := proto.ExitClientRequest{
-		Id: string(id),
-	}
-	response := proto.Response{}
-	err := i.gate.ExitClient(ctx, &request, &response)
-	if err != nil {
-		return errors.New(errRpcInvocation + err.Error())
-	}
-	return getResponseError(&response)
-}
-
-func (i *GatewayRpcImpl) IsOnline(id gate.ID) bool {
-	ctx := context.TODO()
-	request := proto.IsOnlineRequest{
-		Id: string(id),
-	}
-	response := proto.IsOnlineResponse{}
-	err := i.gate.IsOnline(ctx, &request, &response)
-	if err != nil {
-		return false
-	}
-	return response.GetOnline()
 }
 
 func (i *GatewayRpcImpl) EnqueueMessage(id gate.ID, message *messages.GlideMessage) error {

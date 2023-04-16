@@ -1,7 +1,7 @@
 syntax = "proto3";
 package im_service.glide_im.github.com;
 
-option go_package = "pkg/proto";
+option go_package = "im_service/proto";
 
 message Response {
   enum ResponseCode {
@@ -13,29 +13,12 @@ message Response {
   string msg = 2;
 }
 
-message SetIDRequest {
-  string old_id = 1;
-  string new_id = 2;
-}
-
-message ExitClientRequest {
+message UpdateClient {
   string id = 1;
-}
-
-message IsOnlineRequest {
-  string id = 1;
-}
-
-message IsOnlineResponse {
-  bool online = 1;
+  bool close = 2;
 }
 
 message EnqueueMessageRequest {
   string id = 1;
   bytes msg = 2;
-}
-
-message GetawayStatus {
-  int64 totalClient = 1;
-  int64 totalMessage = 2;
 }

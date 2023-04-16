@@ -6,17 +6,9 @@ import (
 )
 
 type GatewayRpcServer interface {
-	SetClientID(ctx context.Context, request *proto.SetIDRequest, response *proto.Response) error
-
-	ExitClient(ctx context.Context, request *proto.ExitClientRequest, response *proto.Response) error
-
-	IsOnline(ctx context.Context, request *proto.IsOnlineRequest, response *proto.IsOnlineResponse) error
+	UpdateClient(ctx context.Context, request *proto.UpdateClient, response *proto.Response) error
 
 	EnqueueMessage(ctx context.Context, request *proto.EnqueueMessageRequest, response *proto.Response) error
-
-	Status(ctx context.Context, request interface{}, response interface{}) error
-
-	// TODO 查询单个连接信息
 }
 
 type SubscriptionRpcServer interface {

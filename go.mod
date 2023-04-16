@@ -3,6 +3,7 @@ module github.com/glide-im/glide
 go 1.18
 
 require (
+	github.com/Shopify/sarama v1.38.1
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -20,7 +21,6 @@ require (
 )
 
 require (
-	github.com/Shopify/sarama v1.38.1 // indirect
 	github.com/akutz/memconn v0.1.0 // indirect
 	github.com/apache/thrift v0.16.0 // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
@@ -96,6 +96,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rpcxio/libkv v0.5.1-0.20210420120011-1fceaedca8a5 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/rubyist/circuitbreaker v2.2.1+incompatible // indirect
@@ -131,7 +132,6 @@ require (
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/tools v0.1.12 // indirect
-	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	google.golang.org/genproto v0.0.0-20220407144326-9054f6ed7bac // indirect
 	google.golang.org/grpc v1.45.0 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect

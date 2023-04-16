@@ -13,20 +13,13 @@ type GatewayRpcClient struct {
 	cli *rpc.BaseClient
 }
 
+func (I *GatewayRpcClient) UpdateClient(ctx context.Context, request *proto.UpdateClient, response *proto.Response) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (I *GatewayRpcClient) Status(ctx context.Context, request interface{}, response interface{}) error {
 	return I.cli.Call(ctx, "Status", request, response)
-}
-
-func (I *GatewayRpcClient) SetClientID(ctx context.Context, request *proto.SetIDRequest, response *proto.Response) error {
-	return I.cli.Call(ctx, "SetClientID", request, response)
-}
-
-func (I *GatewayRpcClient) ExitClient(ctx context.Context, request *proto.ExitClientRequest, response *proto.Response) error {
-	return I.cli.Call(ctx, "ExitClient", request, response)
-}
-
-func (I *GatewayRpcClient) IsOnline(ctx context.Context, request *proto.IsOnlineRequest, response *proto.IsOnlineResponse) error {
-	return I.cli.Call(ctx, "IsOnline", request, response)
 }
 
 func (I *GatewayRpcClient) EnqueueMessage(ctx context.Context, request *proto.EnqueueMessageRequest, response *proto.Response) error {

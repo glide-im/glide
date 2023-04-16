@@ -24,9 +24,6 @@ type Gateway interface {
 	// ExitClient exits the client with the given id.
 	ExitClient(id ID) error
 
-	// IsOnline returns true if the client is online.
-	IsOnline(id ID) bool
-
 	Interface
 }
 

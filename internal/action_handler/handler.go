@@ -15,17 +15,12 @@ func Setup(handler messaging.Interface) {
 
 func dispatch2AllDevice(h *messaging.MessageInterfaceImpl, uid string, m *messages.GlideMessage) bool {
 	devices := []string{"", "1", "2", "3"}
-	ok := false
 	for _, device := range devices {
 		id := gate.NewID("", uid, device)
-		if h.GetClientInterface().IsOnline(id) {
-			err := h.GetClientInterface().EnqueueMessage(id, m)
-			if err != nil {
-				logger.E("dispatch message error %v", err)
-			} else {
-				ok = true
-			}
+		err := h.GetClientInterface().EnqueueMessage(id, m)
+		if err != nil {
+			logger.E("dispatch message error %v", err)
 		}
 	}
-	return ok
+	return true
 }
