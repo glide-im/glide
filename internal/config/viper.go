@@ -3,9 +3,17 @@ package config
 import "github.com/spf13/viper"
 
 var (
-	MySql    *MySqlConf
-	WsServer *WsServerConf
+	Common    *CommonConf
+	MySql     *MySqlConf
+	WsServer  *WsServerConf
+	IMService *IMRpcServerConf
+	Redis     *RedisConf
 )
+
+type CommonConf struct {
+	StoreOfflineMessage bool
+	StoreMessageHistory bool
+}
 
 type WsServerConf struct {
 	ID        string
@@ -20,12 +28,11 @@ type ApiHttpConf struct {
 }
 
 type IMRpcServerConf struct {
-	Addr        string
-	Port        int
-	Network     string
-	Etcd        []string
-	Name        string
-	EnableGroup bool
+	Addr    string
+	Port    int
+	Network string
+	Etcd    []string
+	Name    string
 }
 
 type MySqlConf struct {
@@ -49,8 +56,8 @@ func MustLoad() {
 	viper.SetConfigName("config.toml")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("./config")
 	viper.AddConfigPath("./_config_local")
+	viper.AddConfigPath("./config")
 	viper.AddConfigPath("/etc/")
 	viper.AddConfigPath("$HOME/.config/")
 
@@ -62,8 +69,8 @@ func MustLoad() {
 		MySql       *MySqlConf
 		Redis       *RedisConf
 		WsServer    *WsServerConf
-		ApiHttp     *ApiHttpConf
 		IMRpcServer *IMRpcServerConf
+		CommonConf  *CommonConf
 	}{}
 
 	err = viper.Unmarshal(&c)
@@ -72,4 +79,20 @@ func MustLoad() {
 	}
 	MySql = c.MySql
 	WsServer = c.WsServer
+	IMService = c.IMRpcServer
+	Common = c.CommonConf
+	Redis = c.Redis
+
+	if Common == nil {
+		panic("CommonConf is nil")
+	}
+	if c.MySql == nil {
+		panic("mysql config is nil")
+	}
+	if c.WsServer == nil {
+		panic("ws server config is nil")
+	}
+	if c.IMRpcServer == nil {
+		panic("im rpc server config is nil")
+	}
 }

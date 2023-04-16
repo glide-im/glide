@@ -327,7 +327,8 @@ func (g *Channel) push(message *PublishMessage) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
-	var received map[subscription.SubscriberID]interface{} = nil
+	// TODO recycler use
+	var received = map[subscription.SubscriberID]interface{}{}
 
 	if message.To != nil {
 		for _, id := range message.To {

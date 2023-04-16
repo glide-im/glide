@@ -1,0 +1,52 @@
+syntax = "proto3";
+package im_service.glide_im.github.com;
+
+option go_package = "pkg/proto";
+
+message SubscribeRequest {
+  string channelID = 1;
+  string subscriberID = 2;
+  bytes extra = 3;
+}
+
+message  UnsubscribeRequest {
+  string channelID = 1;
+  string subscriberID = 2;
+}
+
+message UpdateSubscriberRequest {
+  string channelID = 1;
+  string subscriberID = 2;
+  bytes extra = 3;
+}
+
+message RemoveChannelRequest {
+  string channelID = 1;
+}
+
+message ChannelInfo {
+  string ID = 1;
+
+  int32 type = 4;
+  bool muted = 5;
+  bool blocked = 6;
+  bool closed = 7;
+
+  string parent = 8;
+  repeated string children = 9;
+}
+
+message CreateChannelRequest {
+  string channelID = 1;
+  ChannelInfo channelInfo = 2;
+}
+
+message UpdateChannelRequest {
+  string channelID = 1;
+  ChannelInfo channelInfo = 2;
+}
+
+message PublishRequest {
+  string channelID = 1;
+  bytes message = 2;
+}

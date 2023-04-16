@@ -1,19 +1,30 @@
-[WsServer]
+[CommonConf]
+StoreMessageHistory = false # 是否保存消息到数据库
+StoreOfflineMessage = false # 是否保存离线消息(用户不在线时保存, 上线后推送并删除)
+
+[WsServer]  # WebSocket 服务配置
 Addr = "0.0.0.0"
 Port = 8080
-JwtSecret = "secret"
-ID = "node1"
+JwtSecret = "secret" # Jwt 生成的密匙
+ID = "node1" # 单机部署忽略
 
-[MySql]
+[IMRpcServer]  # RPC 接口服务配置
+Addr = "0.0.0.0"
+Port = 8092
+Network = "tcp"
+Etcd = []  # 单机部署忽略
+Name = "im_rpc_server"  # 单机部署忽略
+
+[MySql] # 不保存消息历史时可不配置
 Host = "localhost"
 Port = 3306
-Username = "go_im_test"
-Password = ""
-Db = "go_im_test"
+Username = "root"
+Password = "root"
+Db = "im-service"
 Charset = "utf8mb4"
 
-[Redis]
-Host = "localhost"
-Port = 6378
+[Redis] # 不保存离线消息时可不配置
+Host = ""
+Port = 6789
+Db = 8
 Password = ""
-Db = 9
