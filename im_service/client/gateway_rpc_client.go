@@ -2,15 +2,19 @@ package client
 
 import (
 	"context"
+	"github.com/glide-im/glide/im_service/proto"
+	"github.com/glide-im/glide/im_service/server"
 	"github.com/glide-im/glide/pkg/rpc"
-	"github.com/glide-im/im-service/pkg/proto"
-	"github.com/glide-im/im-service/pkg/server"
 )
 
 var _ server.GatewayRpcServer = &GatewayRpcClient{}
 
 type GatewayRpcClient struct {
 	cli *rpc.BaseClient
+}
+
+func (I *GatewayRpcClient) Status(ctx context.Context, request interface{}, response interface{}) error {
+	return I.cli.Call(ctx, "Status", request, response)
 }
 
 func (I *GatewayRpcClient) SetClientID(ctx context.Context, request *proto.SetIDRequest, response *proto.Response) error {

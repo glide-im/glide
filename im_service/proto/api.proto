@@ -34,3 +34,8 @@ message EnqueueMessageRequest {
   string id = 1;
   bytes msg = 2;
 }
+
+message GetawayStatus {
+  int64 totalClient = 1;
+  int64 totalMessage = 2;
+}

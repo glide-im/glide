@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/glide-im/glide/im_service/proto"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/rpc"
-	"github.com/glide-im/im-service/pkg/proto"
 	"strings"
 )
 

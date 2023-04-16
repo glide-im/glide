@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/glide-im/glide/im_service/client"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/rpc"
 	"github.com/glide-im/glide/pkg/subscription/subscription_impl"
-	"github.com/glide-im/im-service/pkg/client"
 )
 
 /// 如何控制消息服务器, 用户连接, 发布订阅接口

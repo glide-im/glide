@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/glide-im/glide/im_service/client"
 	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/rpc"
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/glide-im/glide/pkg/subscription/subscription_impl"
-	"github.com/glide-im/im-service/pkg/client"
 )
 
 var imServiceRpcCli *client.Client

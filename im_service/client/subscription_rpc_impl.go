@@ -3,9 +3,9 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"github.com/glide-im/glide/im_service/proto"
 	"github.com/glide-im/glide/pkg/rpc"
 	"github.com/glide-im/glide/pkg/subscription"
-	"github.com/glide-im/im-service/pkg/proto"
 )
 
 type SubscriptionRpcImpl struct {

@@ -3,6 +3,7 @@ package im_server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/glide-im/glide/im_service/proto"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
@@ -65,6 +66,11 @@ func (r *RpcServer) EnqueueMessage(ctx context.Context, request *proto.EnqueueMe
 		response.Msg = err.Error()
 	}
 	return nil
+}
+
+func (r *RpcServer) Status(ctx context.Context, request interface{}, response interface{}) error {
+	// TODO 服务状态是否应该在这里收集 ?
+	return errors.New("not implements")
 }
 
 ////////////////////////////////////// Subscription //////////////////////////////////////////////
