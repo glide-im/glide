@@ -1,1 +1,0 @@
-package message_store_kafka

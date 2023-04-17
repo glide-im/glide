@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/Shopify/sarama"
 	"github.com/glide-im/glide/pkg/messages"
+	"github.com/glide-im/glide/pkg/store"
 	"time"
 )
 
@@ -11,11 +12,18 @@ const (
 	chatMessageTopic = "getaway_chat_message"
 )
 
-type MessageStore struct {
+var _ store.MessageStore = &kafkaMessageStore{}
+
+type kafkaMessageStore struct {
 	producer sarama.AsyncProducer
 }
 
-func NewProducer(address []string) (*MessageStore, error) {
+func (m *kafkaMessageStore) StoreOffline(message *messages.ChatMessage) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func NewProducer(address []string) (*kafkaMessageStore, error) {
 
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
@@ -28,12 +36,12 @@ func NewProducer(address []string) (*MessageStore, error) {
 		return nil, err
 	}
 
-	return &MessageStore{
+	return &kafkaMessageStore{
 		producer: producer,
 	}, nil
 }
 
-func (m *MessageStore) Close() error {
+func (m *kafkaMessageStore) Close() error {
 	return m.producer.Close()
 }
 
@@ -49,7 +57,7 @@ func (m *msg) Length() int {
 	return len(m.data)
 }
 
-func (m *MessageStore) StoreMessage(message *messages.ChatMessage) error {
+func (m *kafkaMessageStore) StoreMessage(message *messages.ChatMessage) error {
 
 	msgBytes, err := json.Marshal(message)
 	if err != nil {

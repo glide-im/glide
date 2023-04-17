@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"github.com/glide-im/glide/internal/config"
 	"github.com/glide-im/glide/pkg/messages"
+	"github.com/glide-im/glide/pkg/store"
 	_ "github.com/go-sql-driver/mysql"
 	"strconv"
 	"time"
 )
+
+var _ store.MessageStore = &ChatMessageStore{}
 
 type ChatMessageStore struct {
 	db *sql.DB
@@ -28,6 +31,11 @@ func New(conf *config.MySqlConf) (*ChatMessageStore, error) {
 		db: db,
 	}
 	return m, nil
+}
+
+func (D *ChatMessageStore) StoreOffline(message *messages.ChatMessage) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (D *ChatMessageStore) StoreMessage(m *messages.ChatMessage) error {
@@ -60,7 +68,13 @@ func (D *ChatMessageStore) StoreMessage(m *messages.ChatMessage) error {
 	return nil
 }
 
+var _ store.MessageStore = &IdleChatMessageStore{}
+
 type IdleChatMessageStore struct {
+}
+
+func (i *IdleChatMessageStore) StoreOffline(message *messages.ChatMessage) error {
+	return nil
 }
 
 func (i *IdleChatMessageStore) StoreMessage(message *messages.ChatMessage) error {

@@ -10,4 +10,6 @@ type MessageStore interface {
 
 	// StoreMessage stores chat message to database
 	StoreMessage(message *messages.ChatMessage) error
+
+	StoreOffline(message *messages.ChatMessage) error
 }
