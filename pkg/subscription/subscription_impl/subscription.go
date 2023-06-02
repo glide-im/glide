@@ -78,7 +78,7 @@ func (s *subscriptionImpl) PublishMessage(id subscription.ChanID, message subscr
 	return s.unwrap.Publish(id, message)
 }
 
-func (s *subscriptionImpl) SetGateInterface(g gate.Interface) {
+func (s *subscriptionImpl) SetGateInterface(g gate.DefaultGateway) {
 	s.unwrap.gate = g
 }
 
@@ -89,7 +89,7 @@ type realSubscription struct {
 	channels map[subscription.ChanID]subscription.Channel
 	store    store.SubscriptionStore
 	seqStore ChannelSequenceStore
-	gate     gate.Interface
+	gate     gate.DefaultGateway
 }
 
 func newRealSubscription(msgStore store.SubscriptionStore, seqStore ChannelSequenceStore) *realSubscription {

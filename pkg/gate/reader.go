@@ -1,4 +1,4 @@
-package gateway
+package gate
 
 import (
 	"github.com/glide-im/glide/pkg/conn"
@@ -9,7 +9,7 @@ import (
 
 var messageReader MessageReader
 
-//var codec messages.Codec = message.ProtobufCodec{}
+// var codec messages.Codec = message.ProtobufCodec{}
 var codec messages.Codec = messages.DefaultCodec
 
 // recyclePool 回收池, 减少临时对象, 回收复用 readerRes

@@ -1,4 +1,4 @@
-package gateway
+package gate
 
 const (
 	errClientClosed       = "client closed"

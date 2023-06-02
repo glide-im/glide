@@ -3,7 +3,6 @@ package im_server
 import (
 	"github.com/glide-im/glide/pkg/conn"
 	"github.com/glide-im/glide/pkg/gate"
-	"github.com/glide-im/glide/pkg/gate/gateway"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/rcrowley/go-metrics"
@@ -21,7 +20,7 @@ type GatewayMetrics struct {
 }
 
 type GatewayServer struct {
-	*gateway.Impl
+	*gate.Impl
 
 	server conn.Server
 	h      gate.MessageHandler
@@ -35,8 +34,8 @@ type GatewayServer struct {
 
 func NewServer(id string, addr string, port int) (*GatewayServer, error) {
 	srv := GatewayServer{}
-	srv.Impl, _ = gateway.NewServer(
-		&gateway.Options{
+	srv.Impl, _ = gate.NewServer(
+		&gate.Options{
 			ID:                    id,
 			MaxMessageConcurrency: 30_0000,
 		},
@@ -85,7 +84,7 @@ func (c *GatewayServer) SetMessageHandler(h gate.MessageHandler) {
 	c.Impl.SetMessageHandler(handler)
 }
 
-// HandleConnection 当一个用户连接建立后, 由该方法创建 Client 实例 Client 并管理该连接, 返回该由连接创建客户端的标识 id
+// HandleConnection 当一个用户连接建立后, 由该方法创建 UserClient 实例 UserClient 并管理该连接, 返回该由连接创建客户端的标识 id
 // 返回的标识 id 是一个临时 id, 后续连接认证后会改变
 func (c *GatewayServer) HandleConnection(conn conn.Connection) gate.ID {
 
@@ -95,7 +94,7 @@ func (c *GatewayServer) HandleConnection(conn conn.Connection) gate.ID {
 		logger.E("[gateway] gen temp id error: %v", err)
 		return ""
 	}
-	ret := gateway.NewClientWithConfig(conn, c, c.h, &gateway.ClientConfig{
+	ret := gate.NewClientWithConfig(conn, c, c.h, &gate.ClientConfig{
 		HeartbeatLostLimit:      3,
 		ClientHeartbeatDuration: time.Second * 30,
 		ServerHeartbeatDuration: time.Second * 30,

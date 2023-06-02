@@ -1,21 +1,51 @@
-package gateway
+package gate
 
 import (
 	"errors"
-	"github.com/glide-im/glide/pkg/gate"
+	"github.com/glide-im/glide/pkg/conn"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/panjf2000/ants/v2"
 	"log"
 	"sync"
 )
 
-// Interface is gateway default implements.
-type Interface interface {
-	gate.Gateway
-	GetClient(id gate.ID) gate.Client
-	GetAll() map[gate.ID]gate.Info
-	SetMessageHandler(h gate.MessageHandler)
-	AddClient(cs gate.Client)
+// Gateway is the basic and common interface for all gate implementations.
+// As the basic gate, it is used to provide a common gate interface for other modules to interact with the gate.
+type Gateway interface {
+
+	// SetClientID sets the client id with the new id.
+	SetClientID(old ID, new_ ID) error
+
+	// ExitClient exits the client with the given id.
+	ExitClient(id ID) error
+
+	// EnqueueMessage enqueues the message to the client with the given id.
+	EnqueueMessage(id ID, message *messages.GlideMessage) error
+}
+
+// Server is the interface for the gateway server, which is used to handle and manager client connections.
+type Server interface {
+	Gateway
+
+	// SetMessageHandler sets the client message handler.
+	SetMessageHandler(h MessageHandler)
+
+	// HandleConnection handles the new client connection and returns the random and temporary id set for the connection.
+	HandleConnection(c conn.Connection) ID
+
+	Run() error
+}
+
+// MessageHandler used to handle messages from the gate.
+type MessageHandler func(cliInfo *Info, message *messages.GlideMessage)
+
+// DefaultGateway is gateway default implements.
+type DefaultGateway interface {
+	Gateway
+	GetClient(id ID) Client
+	GetAll() map[ID]Info
+	SetMessageHandler(h MessageHandler)
+	AddClient(cs Client)
 }
 
 type Options struct {
@@ -25,34 +55,34 @@ type Options struct {
 	MaxMessageConcurrency int
 }
 
-var _ gate.Gateway = (*Impl)(nil)
+var _ Gateway = (*Impl)(nil)
 
 type Impl struct {
-	gate.Gateway
+	Gateway
 
 	id string
 
 	// clients is a map of all connected clients
-	clients map[gate.ID]gate.Client
+	clients map[ID]Client
 	mu      sync.RWMutex
 
 	// msgHandler client message handler
-	msgHandler gate.MessageHandler
+	msgHandler MessageHandler
 
 	// pool of ants, used to process messages concurrently.
 	pool *ants.Pool
 
-	emptyInfo *gate.Info
+	emptyInfo *Info
 }
 
 func NewServer(options *Options) (*Impl, error) {
 
 	ret := new(Impl)
-	ret.clients = map[gate.ID]gate.Client{}
+	ret.clients = map[ID]Client{}
 	ret.mu = sync.RWMutex{}
 	ret.id = options.ID
-	ret.emptyInfo = &gate.Info{
-		ID: gate.NewID(ret.id, "", ""),
+	ret.emptyInfo = &Info{
+		ID: NewID(ret.id, "", ""),
 	}
 
 	pool, err := ants.NewPool(options.MaxMessageConcurrency,
@@ -70,29 +100,29 @@ func NewServer(options *Options) (*Impl, error) {
 }
 
 // GetClient returns the client with specified id
-func (c *Impl) GetClient(id gate.ID) gate.Client {
+func (c *Impl) GetClient(id ID) Client {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.clients[id]
 }
 
 // GetAll returns all clients in the gateway.
-func (c *Impl) GetAll() map[gate.ID]gate.Info {
+func (c *Impl) GetAll() map[ID]Info {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	result := map[gate.ID]gate.Info{}
+	result := map[ID]Info{}
 	for id, client := range c.clients {
 		result[id] = client.GetInfo()
 	}
 	return result
 }
 
-func (c *Impl) SetMessageHandler(h gate.MessageHandler) {
+func (c *Impl) SetMessageHandler(h MessageHandler) {
 	c.msgHandler = h
 }
 
-func (c *Impl) AddClient(cs gate.Client) {
+func (c *Impl) AddClient(cs Client) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -106,7 +136,7 @@ func (c *Impl) AddClient(cs gate.Client) {
 // SetClientID replace the oldID with newID of the client.
 // If the oldID is not exist, return errClientNotExist.
 // If the newID is existed, return errClientAlreadyExist.
-func (c *Impl) SetClientID(oldID, newID gate.ID) error {
+func (c *Impl) SetClientID(oldID, newID ID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -133,7 +163,7 @@ func (c *Impl) SetClientID(oldID, newID gate.ID) error {
 
 // ExitClient close the client with the specified id.
 // If the client is not exist, return errClientNotExist.
-func (c *Impl) ExitClient(id gate.ID) error {
+func (c *Impl) ExitClient(id ID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -153,7 +183,7 @@ func (c *Impl) ExitClient(id gate.ID) error {
 }
 
 // EnqueueMessage to the client with the specified id.
-func (c *Impl) EnqueueMessage(id gate.ID, msg *messages.GlideMessage) error {
+func (c *Impl) EnqueueMessage(id ID, msg *messages.GlideMessage) error {
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -167,7 +197,7 @@ func (c *Impl) EnqueueMessage(id gate.ID, msg *messages.GlideMessage) error {
 	return c.enqueueMessage(cli, msg)
 }
 
-func (c *Impl) enqueueMessage(cli gate.Client, msg *messages.GlideMessage) error {
+func (c *Impl) enqueueMessage(cli Client, msg *messages.GlideMessage) error {
 	if !cli.IsRunning() {
 		return errors.New(errClientClosed)
 	}

@@ -6,7 +6,6 @@ import (
 	"github.com/glide-im/glide/pkg/auth"
 	"github.com/glide-im/glide/pkg/auth/jwt_auth"
 	"github.com/glide-im/glide/pkg/gate"
-	"github.com/glide-im/glide/pkg/gate/gateway"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 )
@@ -45,7 +44,7 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 
 		newID := gate.NewID("", jwtResp.Uid, jwtResp.Device)
 		err = d.def.GetClientInterface().SetClientID(c.ID, newID)
-		if gateway.IsIDAlreadyExist(err) {
+		if gate.IsIDAlreadyExist(err) {
 			tempId, err := gate.GenTempID(newID.Gateway())
 			if err != nil {
 				return err
@@ -59,7 +58,7 @@ func (d *MessageHandler) handleAuth(c *gate.Info, msg *messages.GlideMessage) er
 			if err != nil {
 				return errors.New("failed to set new id:" + err.Error())
 			}
-		} else if gateway.IsClientNotExist(err) {
+		} else if gate.IsClientNotExist(err) {
 			return errors.New("auth client not exist")
 		} else if err != nil {
 			return err

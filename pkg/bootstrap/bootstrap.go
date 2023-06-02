@@ -10,7 +10,7 @@ import (
 
 type Options struct {
 	Messaging    messaging.Interface
-	Gate         gate.Interface
+	Gate         gate.DefaultGateway
 	Subscription subscription.Interface
 }
 

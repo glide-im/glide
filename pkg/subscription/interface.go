@@ -46,7 +46,7 @@ type Interface interface {
 type Subscribe interface {
 	Interface
 
-	SetGateInterface(gate gate.Interface)
+	SetGateInterface(gate gate.DefaultGateway)
 
 	UpdateSubscriber(id ChanID, updates []Update) error
 

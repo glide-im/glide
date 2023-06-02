@@ -10,13 +10,14 @@ var messageVersion int64 = 1
 
 // GlideMessage common data of all message
 type GlideMessage struct {
-	Ver    int64             `json:"ver,omitempty"`
-	Seq    int64             `json:"seq,omitempty"`
-	Action string            `json:"action"`
-	From   string            `json:"from,omitempty"`
-	To     string            `json:"to,omitempty"`
-	Data   *Data             `json:"data,omitempty"`
-	Extra  map[string]string `json:"extra,omitempty"`
+	Ver    int64  `json:"ver,omitempty"`
+	Seq    int64  `json:"seq,omitempty"`
+	Action string `json:"action"`
+	From   string `json:"from,omitempty"`
+	To     string `json:"to,omitempty"`
+	Data   *Data  `json:"data,omitempty"`
+
+	Extra map[string]string `json:"extra,omitempty"`
 }
 
 func NewMessage(seq int64, action Action, data interface{}) *GlideMessage {

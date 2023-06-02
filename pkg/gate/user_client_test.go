@@ -1,8 +1,7 @@
-package gateway
+package gate
 
 import (
 	"github.com/glide-im/glide/pkg/conn"
-	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -10,7 +9,7 @@ import (
 	"time"
 )
 
-func mockMsgHandler(cliInfo *gate.Info, message *messages.GlideMessage) {
+func mockMsgHandler(cliInfo *Info, message *messages.GlideMessage) {
 }
 
 func TestClient_RunReadHeartbeatTimeout(t *testing.T) {
@@ -162,15 +161,15 @@ func (m *mockConnection) GetConnInfo() *conn.ConnectionInfo {
 type mockGateway struct {
 }
 
-func (m mockGateway) SetClientID(old gate.ID, new_ gate.ID) error {
+func (m mockGateway) SetClientID(old ID, new_ ID) error {
 	return nil
 }
 
-func (m mockGateway) ExitClient(id gate.ID) error {
+func (m mockGateway) ExitClient(id ID) error {
 	log.Println("exit client:", id)
 	return nil
 }
 
-func (m mockGateway) EnqueueMessage(id gate.ID, message *messages.GlideMessage) error {
+func (m mockGateway) EnqueueMessage(id ID, message *messages.GlideMessage) error {
 	return nil
 }

@@ -33,7 +33,7 @@ type ChannelSequenceStore interface {
 	NextSegmentSequence(id subscription.ChanID, info subscription.ChanInfo) (int64, int64, error)
 }
 
-//SubscriberOptions is the options for the subscriber
+// SubscriberOptions is the options for the subscriber
 type SubscriberOptions struct {
 	Perm Permission
 }
@@ -98,10 +98,10 @@ type Channel struct {
 
 	store    store.SubscriptionStore
 	seqStore ChannelSequenceStore
-	gate     gate.Interface
+	gate     gate.DefaultGateway
 }
 
-func NewChannel(chanID subscription.ChanID, gate gate.Interface,
+func NewChannel(chanID subscription.ChanID, gate gate.DefaultGateway,
 	store store.SubscriptionStore, seqStore ChannelSequenceStore) (*Channel, error) {
 
 	ret := &Channel{

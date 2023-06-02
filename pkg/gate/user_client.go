@@ -1,9 +1,8 @@
-package gateway
+package gate
 
 import (
 	"errors"
 	"github.com/glide-im/glide/pkg/conn"
-	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/timingwheel"
@@ -49,8 +48,8 @@ type ClientConfig struct {
 	CloseImmediately bool
 }
 
-// Client represent a user conn client.
-type Client struct {
+// UserClient represent a user conn client.
+type UserClient struct {
 
 	// conn is the real connection
 	conn conn.Connection
@@ -81,18 +80,18 @@ type Client struct {
 	hbLost int
 
 	// info is the client info
-	info *gate.Info
+	info *Info
 
 	// mgr the client manager which manage this client
-	mgr gate.Gateway
+	mgr Gateway
 	// msgHandler client message handler
-	msgHandler gate.MessageHandler
+	msgHandler MessageHandler
 
 	// config is the client config
 	config *ClientConfig
 }
 
-func NewClientWithConfig(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandler, config *ClientConfig) *Client {
+func NewClientWithConfig(conn conn.Connection, mgr Gateway, handler MessageHandler, config *ClientConfig) *UserClient {
 	if config == nil {
 		config = &ClientConfig{
 			ClientHeartbeatDuration: defaultHeartbeatDuration,
@@ -102,14 +101,14 @@ func NewClientWithConfig(conn conn.Connection, mgr gate.Gateway, handler gate.Me
 		}
 	}
 
-	ret := Client{
+	ret := UserClient{
 		conn:         conn,
 		messages:     make(chan *messages.GlideMessage, 100),
 		closeReadCh:  make(chan struct{}),
 		closeWriteCh: make(chan struct{}),
 		hbC:          tw.After(config.ClientHeartbeatDuration),
 		hbS:          tw.After(config.ServerHeartbeatDuration),
-		info: &gate.Info{
+		info: &Info{
 			ConnectionAt: time.Now().Unix(),
 			CliAddr:      conn.GetConnInfo().Addr,
 		},
@@ -120,26 +119,26 @@ func NewClientWithConfig(conn conn.Connection, mgr gate.Gateway, handler gate.Me
 	return &ret
 }
 
-func NewClient(conn conn.Connection, mgr gate.Gateway, handler gate.MessageHandler) *Client {
+func NewClient(conn conn.Connection, mgr Gateway, handler MessageHandler) *UserClient {
 	return NewClientWithConfig(conn, mgr, handler, nil)
 }
 
-func (c *Client) GetInfo() gate.Info {
+func (c *UserClient) GetInfo() Info {
 	return *c.info
 }
 
 // SetID set client id.
-func (c *Client) SetID(id gate.ID) {
+func (c *UserClient) SetID(id ID) {
 	c.info.ID = id
 }
 
 // IsRunning return true if client is running
-func (c *Client) IsRunning() bool {
+func (c *UserClient) IsRunning() bool {
 	return atomic.LoadInt32(&c.state) == stateRunning
 }
 
 // EnqueueMessage enqueue message to client message queue.
-func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
+func (c *UserClient) EnqueueMessage(msg *messages.GlideMessage) error {
 	if atomic.LoadInt32(&c.state) == stateClosed {
 		return errors.New("client has closed")
 	}
@@ -154,7 +153,7 @@ func (c *Client) EnqueueMessage(msg *messages.GlideMessage) error {
 }
 
 // runRead message from client.
-func (c *Client) runRead() {
+func (c *UserClient) runRead() {
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -223,7 +222,7 @@ STOP:
 }
 
 // runWrite message to client.
-func (c *Client) runWrite() {
+func (c *UserClient) runWrite() {
 	defer func() {
 		err := recover()
 		if err != nil {
@@ -266,7 +265,7 @@ STOP:
 
 // Exit client, note: exit client will not close conn right now, but will close when message chan is empty.
 // It's close read right now, and close write2Conn when all message in queue is sent.
-func (c *Client) Exit() {
+func (c *UserClient) Exit() {
 	if atomic.LoadInt32(&c.state) == stateClosed {
 		return
 	}
@@ -301,7 +300,7 @@ func (c *Client) Exit() {
 	}
 }
 
-func (c *Client) Run() {
+func (c *UserClient) Run() {
 	logger.I("new client running addr:%s id:%s", c.conn.GetConnInfo().Addr, c.info.ID)
 	atomic.StoreInt32(&c.state, stateRunning)
 	c.closeWriteOnce = sync.Once{}
@@ -311,16 +310,16 @@ func (c *Client) Run() {
 	go c.runWrite()
 }
 
-func (c *Client) isClosed() bool {
+func (c *UserClient) isClosed() bool {
 	return atomic.LoadInt32(&c.state) == stateClosed
 }
 
-func (c *Client) close() {
+func (c *UserClient) close() {
 	close(c.messages)
 	_ = c.conn.Close()
 }
 
-func (c *Client) write2Conn(m *messages.GlideMessage) {
+func (c *UserClient) write2Conn(m *messages.GlideMessage) {
 	b, err := codec.Encode(m)
 	if err != nil {
 		logger.E("serialize output message", err)
@@ -336,7 +335,7 @@ func (c *Client) write2Conn(m *messages.GlideMessage) {
 	}
 }
 
-func (c *Client) stopReadWrite() {
+func (c *UserClient) stopReadWrite() {
 	c.closeWriteOnce.Do(func() {
 		close(c.closeWriteCh)
 	})
@@ -345,7 +344,7 @@ func (c *Client) stopReadWrite() {
 	})
 }
 
-func (c *Client) handleHello(m *messages.GlideMessage) {
+func (c *UserClient) handleHello(m *messages.GlideMessage) {
 	hello := messages.Hello{}
 	err := m.Data.Deserialize(&hello)
 	if err != nil {
