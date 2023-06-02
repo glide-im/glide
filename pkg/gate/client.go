@@ -181,6 +181,14 @@ type ClientAuthCredentials struct {
 type Authenticator struct {
 	algorithm string
 	key       []byte
+	gateway   DefaultGateway
+}
+
+func NewAuthenticator(key string) *Authenticator {
+	return &Authenticator{
+		algorithm: "des-ede3-cbc",
+		key:       openssl.Md5(key),
+	}
 }
 
 func (a *Authenticator) ClientAuthMessageInterceptor(dc DefaultClient, msg *messages.GlideMessage) bool {
@@ -192,26 +200,36 @@ func (a *Authenticator) ClientAuthMessageInterceptor(dc DefaultClient, msg *mess
 	if err != nil {
 		_ = dc.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid authenticate message"))
 	} else {
-		go a.handleInternal(dc, &credential)
+		e, c := a.decrypt(&credential)
+		if e != nil {
+			_ = dc.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid authenticate message"))
+			return true
+		}
+		e = a.gateway.SetClientID(dc.GetInfo().ID, NewID("", c.UserID, c.DeviceID))
+		if e != nil {
+			dc.SetCredentials(c)
+		}
 	}
 	return true
 }
 
-func (a *Authenticator) handleInternal(dc DefaultClient, credential *EncryptedCredential) {
-	// decrypt credentials use 3DES algorithm
-	credentialBytes := []byte(credential.Credential)
+func (a *Authenticator) decrypt(credential *EncryptedCredential) (error, *ClientAuthCredentials) {
 
-	encrypt, err := openssl.Des3CBCEncrypt(credentialBytes, a.key, []byte(""), openssl.PKCS5_PADDING)
+	b64Bytes := []byte(credential.Credential)
+	credentialBytes, err := base64.StdEncoding.DecodeString(string(b64Bytes))
 	if err != nil {
-		_ = dc.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid authenticate message"))
-		return
+		return err, nil
 	}
 
-	var c []byte
-	_, err = base64.StdEncoding.Decode(encrypt, c)
+	encrypt, err := openssl.AesCBCDecrypt(credentialBytes, a.key, []byte(""), openssl.PKCS7_PADDING)
 	if err != nil {
-
+		return err, nil
 	}
+
 	credentials := ClientAuthCredentials{}
-	err = json.Unmarshal(c, &credentials)
+	err = json.Unmarshal(encrypt, &credentials)
+	if err != nil {
+		return err, nil
+	}
+	return nil, &credentials
 }
