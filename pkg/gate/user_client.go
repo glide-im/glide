@@ -48,6 +48,18 @@ type ClientConfig struct {
 	CloseImmediately bool
 }
 
+type MessageInterceptor = func(dc DefaultClient, msg *messages.GlideMessage) bool
+
+type DefaultClient interface {
+	Client
+
+	SetCredentials(credentials *ClientAuthCredentials)
+
+	AddMessageInterceptor(interceptor MessageInterceptor)
+}
+
+var _ DefaultClient = (*UserClient)(nil)
+
 // UserClient represent a user conn client.
 type UserClient struct {
 
@@ -82,6 +94,8 @@ type UserClient struct {
 	// info is the client info
 	info *Info
 
+	ticket *ClientTicket
+
 	// mgr the client manager which manage this client
 	mgr Gateway
 	// msgHandler client message handler
@@ -91,7 +105,7 @@ type UserClient struct {
 	config *ClientConfig
 }
 
-func NewClientWithConfig(conn conn.Connection, mgr Gateway, handler MessageHandler, config *ClientConfig) *UserClient {
+func NewClientWithConfig(conn conn.Connection, mgr Gateway, handler MessageHandler, config *ClientConfig) DefaultClient {
 	if config == nil {
 		config = &ClientConfig{
 			ClientHeartbeatDuration: defaultHeartbeatDuration,
@@ -119,8 +133,23 @@ func NewClientWithConfig(conn conn.Connection, mgr Gateway, handler MessageHandl
 	return &ret
 }
 
-func NewClient(conn conn.Connection, mgr Gateway, handler MessageHandler) *UserClient {
+func NewClient(conn conn.Connection, mgr Gateway, handler MessageHandler) DefaultClient {
 	return NewClientWithConfig(conn, mgr, handler, nil)
+}
+
+func (c *UserClient) SetCredentials(credentials *ClientAuthCredentials) {
+	c.ticket = credentials.Ticket
+	c.info.ConnectionId = credentials.ConnectionID
+}
+
+func (c *UserClient) AddMessageInterceptor(interceptor MessageInterceptor) {
+	h := c.msgHandler
+	c.msgHandler = func(cliInfo *Info, msg *messages.GlideMessage) {
+		if interceptor(c, msg) {
+			return
+		}
+		h(cliInfo, msg)
+	}
 }
 
 func (c *UserClient) GetInfo() Info {

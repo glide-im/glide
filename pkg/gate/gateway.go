@@ -16,6 +16,8 @@ type Gateway interface {
 	// SetClientID sets the client id with the new id.
 	SetClientID(old ID, new_ ID) error
 
+	UpdateClient(id ID, info *ClientTicket) error
+
 	// ExitClient exits the client with the given id.
 	ExitClient(id ID) error
 
@@ -42,9 +44,13 @@ type MessageHandler func(cliInfo *Info, message *messages.GlideMessage)
 // DefaultGateway is gateway default implements.
 type DefaultGateway interface {
 	Gateway
+
 	GetClient(id ID) Client
+
 	GetAll() map[ID]Info
+
 	SetMessageHandler(h MessageHandler)
+
 	AddClient(cs Client)
 }
 
@@ -128,6 +134,11 @@ func (c *Impl) AddClient(cs Client) {
 
 	id := cs.GetInfo().ID
 	id.SetGateway(c.id)
+
+	//dc, ok := cs.(DefaultClient)
+	//if ok {
+	//	dc.AddMessageInterceptor(ClientAuthMessageInterceptor)
+	//}
 
 	c.clients[id] = cs
 	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOnline, id))

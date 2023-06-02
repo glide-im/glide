@@ -26,7 +26,7 @@ func TestClient_RunReadHeartbeatTimeout(t *testing.T) {
 	client := NewClient(&mockConnection{
 		writeDelayMilliSec: 200,
 		mockRead:           fn,
-	}, mockGateway{}, mockMsgHandler)
+	}, mockGateway{}, mockMsgHandler).(*UserClient)
 
 	client.config.ClientHeartbeatDuration = time.Millisecond * 200
 	client.Run()
@@ -77,7 +77,7 @@ func TestClient_ExitImmediately(t *testing.T) {
 	client := NewClient(&mockConnection{
 		writeDelayMilliSec: 200,
 		mockRead:           fn,
-	}, mockGateway{}, mockMsgHandler)
+	}, mockGateway{}, mockMsgHandler).(*UserClient)
 	client.config.CloseImmediately = true
 	client.Run()
 
@@ -99,7 +99,7 @@ func TestClient_Exit(t *testing.T) {
 	client := NewClient(&mockConnection{
 		writeDelayMilliSec: 10,
 		mockRead:           fn,
-	}, mockGateway{}, mockMsgHandler)
+	}, mockGateway{}, mockMsgHandler).(*UserClient)
 	client.config.CloseImmediately = false
 	client.Run()
 
@@ -159,6 +159,31 @@ func (m *mockConnection) GetConnInfo() *conn.ConnectionInfo {
 }
 
 type mockGateway struct {
+}
+
+func (m mockGateway) UpdateClient(id ID, info *ClientTicket) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGateway) GetClient(id ID) Client {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGateway) GetAll() map[ID]Info {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGateway) SetMessageHandler(h MessageHandler) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGateway) AddClient(cs Client) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m mockGateway) SetClientID(old ID, new_ ID) error {

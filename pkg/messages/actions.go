@@ -10,7 +10,8 @@ const (
 	ActionHeartbeat                  = "heartbeat"
 	ActionNotifyUnknownAction        = "notify.unknown.action"
 
-	ActionNotifyError = "notify.error"
+	ActionAuthenticate = "authenticate"
+	ActionNotifyError  = "notify.error"
 
 	ActionInternalOnline  = "internal.online"
 	ActionInternalOffline = "internal.offline"
