@@ -16,7 +16,7 @@ type Gateway interface {
 	// SetClientID sets the client id with the new id.
 	SetClientID(old ID, new_ ID) error
 
-	UpdateClient(id ID, info *ClientTicket) error
+	UpdateClient(id ID, info *ClientSecrets) error
 
 	// ExitClient exits the client with the given id.
 	ExitClient(id ID) error
@@ -57,6 +57,8 @@ type DefaultGateway interface {
 type Options struct {
 	// ID is the gateway id.
 	ID string
+	// SecretKey is the secret key used to encrypt and decrypt authentication token.
+	SecretKey string
 	// MaxMessageConcurrency is the max message concurrency.
 	MaxMessageConcurrency int
 }
@@ -75,6 +77,8 @@ type Impl struct {
 	// msgHandler client message handler
 	msgHandler MessageHandler
 
+	authenticator *Authenticator
+
 	// pool of ants, used to process messages concurrently.
 	pool *ants.Pool
 
@@ -89,6 +93,10 @@ func NewServer(options *Options) (*Impl, error) {
 	ret.id = options.ID
 	ret.emptyInfo = &Info{
 		ID: NewID(ret.id, "", ""),
+	}
+
+	if options.SecretKey != "" {
+		ret.authenticator = NewAuthenticator(ret, options.SecretKey)
 	}
 
 	pool, err := ants.NewPool(options.MaxMessageConcurrency,
@@ -135,10 +143,10 @@ func (c *Impl) AddClient(cs Client) {
 	id := cs.GetInfo().ID
 	id.SetGateway(c.id)
 
-	//dc, ok := cs.(DefaultClient)
-	//if ok {
-	//	dc.AddMessageInterceptor(ClientAuthMessageInterceptor)
-	//}
+	dc, ok := cs.(DefaultClient)
+	if ok {
+		dc.AddMessageInterceptor(c.interceptClientMessage)
+	}
 
 	c.clients[id] = cs
 	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOnline, id))
@@ -206,6 +214,17 @@ func (c *Impl) EnqueueMessage(id ID, msg *messages.GlideMessage) error {
 	}
 
 	return c.enqueueMessage(cli, msg)
+}
+
+func (c *Impl) interceptClientMessage(dc DefaultClient, m *messages.GlideMessage) bool {
+
+	if m.Action == messages.ActionAuthenticate {
+		if c.authenticator != nil {
+			return c.authenticator.ClientAuthMessageInterceptor(dc, m)
+		}
+	}
+
+	return c.authenticator.MessageInterceptor(dc, m)
 }
 
 func (c *Impl) enqueueMessage(cli Client, msg *messages.GlideMessage) error {

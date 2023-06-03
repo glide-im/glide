@@ -32,12 +32,13 @@ type GatewayServer struct {
 	metrics *GatewayMetrics
 }
 
-func NewServer(id string, addr string, port int) (*GatewayServer, error) {
+func NewServer(id string, addr string, port int, secretKey string) (*GatewayServer, error) {
 	srv := GatewayServer{}
 	srv.Impl, _ = gate.NewServer(
 		&gate.Options{
 			ID:                    id,
 			MaxMessageConcurrency: 30_0000,
+			SecretKey:             secretKey,
 		},
 	)
 	srv.metrics = &GatewayMetrics{

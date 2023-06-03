@@ -1,6 +1,7 @@
 [CommonConf]
 StoreMessageHistory = false # 是否保存消息到数据库
 StoreOfflineMessage = false # 是否保存离线消息(用户不在线时保存, 上线后推送并删除)
+SecretKey = "secret_key" # 服务秘钥
 
 [WsServer]  # WebSocket 服务配置
 Addr = "0.0.0.0"

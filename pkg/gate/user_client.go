@@ -55,6 +55,8 @@ type DefaultClient interface {
 
 	SetCredentials(credentials *ClientAuthCredentials)
 
+	GetCredentials() *ClientAuthCredentials
+
 	AddMessageInterceptor(interceptor MessageInterceptor)
 }
 
@@ -94,7 +96,7 @@ type UserClient struct {
 	// info is the client info
 	info *Info
 
-	ticket *ClientTicket
+	credentials *ClientAuthCredentials
 
 	// mgr the client manager which manage this client
 	mgr Gateway
@@ -123,7 +125,7 @@ func NewClientWithConfig(conn conn.Connection, mgr Gateway, handler MessageHandl
 		hbC:          tw.After(config.ClientHeartbeatDuration),
 		hbS:          tw.After(config.ServerHeartbeatDuration),
 		info: &Info{
-			ConnectionAt: time.Now().Unix(),
+			ConnectionAt: time.Now().UnixMilli(),
 			CliAddr:      conn.GetConnInfo().Addr,
 		},
 		mgr:        mgr,
@@ -138,8 +140,12 @@ func NewClient(conn conn.Connection, mgr Gateway, handler MessageHandler) Defaul
 }
 
 func (c *UserClient) SetCredentials(credentials *ClientAuthCredentials) {
-	c.ticket = credentials.Ticket
+	c.credentials = credentials
 	c.info.ConnectionId = credentials.ConnectionID
+}
+
+func (c *UserClient) GetCredentials() *ClientAuthCredentials {
+	return c.credentials
 }
 
 func (c *UserClient) AddMessageInterceptor(interceptor MessageInterceptor) {

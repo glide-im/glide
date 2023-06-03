@@ -1,6 +1,8 @@
 package hash
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"math/bits"
 	"unsafe"
 )
@@ -9,6 +11,12 @@ const (
 	c1_32 uint32 = 0xcc9e2d51
 	c2_32 uint32 = 0x1b873593
 )
+
+func SHA1(str string) string {
+	h := sha1.New()
+	_, _ = h.Write([]byte(str))
+	return hex.EncodeToString(h.Sum(nil))
+}
 
 func Hash(data []byte, seed uint32) uint32 {
 

@@ -348,7 +348,7 @@ func (g *Channel) push(message *PublishMessage) {
 		}
 		err := g.gate.EnqueueMessage(gate.ID(subscriberID), message.Message)
 		if err != nil {
-			logger.E("chan %s push message to subscribe error: %v", g.id, err)
+			logger.E("chan %s push message to subscribe %s error: %v", g.id, subscriberID, err)
 		}
 	}
 }

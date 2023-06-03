@@ -44,7 +44,12 @@ func main() {
 		panic(err)
 	}
 
-	gateway, err := im_server.NewServer(config.WsServer.ID, config.WsServer.Addr, config.WsServer.Port)
+	gateway, err := im_server.NewServer(
+		config.WsServer.ID,
+		config.WsServer.Addr,
+		config.WsServer.Port,
+		config.Common.SecretKey,
+	)
 	if err != nil {
 		panic(err)
 	}

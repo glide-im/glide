@@ -8,6 +8,7 @@ import (
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/messaging"
+	"time"
 )
 
 type InternalActionHandler struct {
@@ -28,7 +29,11 @@ func (o *InternalActionHandler) Handle(h *messaging.MessageInterfaceImpl, cliInf
 							logger.ErrE("push offline message error", err)
 						}
 					}()
-					world_channel.OnUserOnline(gate.ID(m.Data.String()))
+					go func() {
+						time.Sleep(time.Second * 1)
+						world_channel.OnUserOnline(gate.ID(m.Data.String()))
+					}()
+
 					if config.Common.StoreOfflineMessage {
 						message_handler.PushOfflineMessage(h, cliInfo.ID.UID())
 					}

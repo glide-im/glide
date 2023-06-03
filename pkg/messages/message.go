@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -17,6 +18,9 @@ type GlideMessage struct {
 	To     string `json:"to,omitempty"`
 	Data   *Data  `json:"data,omitempty"`
 	Msg    string `json:"msg,omitempty"`
+
+	Ticket string `json:"ticket,omitempty"`
+	Sign   string `json:"sign,omitempty"`
 
 	Extra map[string]string `json:"extra,omitempty"`
 }
@@ -115,7 +119,7 @@ func (d *Data) String() string {
 		if d.des == nil {
 			s = "<nil>"
 		} else {
-			s = d.des
+			s, _ = json.Marshal(d.des)
 		}
 	}
 	return fmt.Sprintf("%s", s)

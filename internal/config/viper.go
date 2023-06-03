@@ -13,6 +13,7 @@ var (
 type CommonConf struct {
 	StoreOfflineMessage bool
 	StoreMessageHistory bool
+	SecretKey           string
 }
 
 type WsServerConf struct {

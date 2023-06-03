@@ -18,7 +18,7 @@ func dispatch2AllDevice(h *messaging.MessageInterfaceImpl, uid string, m *messag
 	for _, device := range devices {
 		id := gate.NewID("", uid, device)
 		err := h.GetClientInterface().EnqueueMessage(id, m)
-		if err != nil {
+		if err != nil && !gate.IsClientNotExist(err) {
 			logger.E("dispatch message error %v", err)
 		}
 	}

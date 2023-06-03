@@ -9,7 +9,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/glide-im/glide/pkg/hash"
+	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
+	"strings"
+	"time"
 )
 
 type CredentialCrypto interface {
@@ -159,44 +163,107 @@ func (a *AesCBCCrypto) cbcIVPending(iv []byte, blockSize int) []byte {
 	return iv
 }
 
+// Authenticator handle client authentication message
 type Authenticator struct {
 	credentialCrypto CredentialCrypto
 	gateway          DefaultGateway
 }
 
-func NewAuthenticator(key string) *Authenticator {
+func NewAuthenticator(gateway DefaultGateway, key string) *Authenticator {
 	k := sha512.New().Sum([]byte(key))
 	return &Authenticator{
 		credentialCrypto: NewAesCBCCrypto(k),
+		gateway:          gateway,
 	}
+}
+
+func (a *Authenticator) MessageInterceptor(dc DefaultClient, msg *messages.GlideMessage) bool {
+
+	switch msg.Action {
+	case messages.ActionGroupMessage, messages.ActionChatMessage, messages.ActionChatMessageResend:
+		break
+	default:
+		return false
+	}
+
+	if dc.GetCredentials() == nil || dc.GetCredentials().Secrets == nil {
+		_ = a.gateway.EnqueueMessage(dc.GetInfo().ID, messages.NewMessage(msg.GetSeq(), messages.ActionNotifyForbidden, "no credentials"))
+		return true
+	}
+
+	secret := dc.GetCredentials().Secrets.MessageDeliverSecret
+	if secret == "" {
+		_ = a.gateway.EnqueueMessage(dc.GetInfo().ID, messages.NewMessage(msg.GetSeq(), messages.ActionNotifyForbidden, "no message deliver secret"))
+		return true
+	}
+
+	var ticket = msg.Ticket
+	// sha1 hash
+	if len(ticket) != 40 {
+		_ = a.gateway.EnqueueMessage(dc.GetInfo().ID, messages.NewMessage(msg.GetSeq(), messages.ActionNotifyForbidden, "invalid ticket"))
+		return true
+	}
+	sum1 := hash.SHA1(secret + msg.To)
+	id := dc.GetInfo().ID
+	expectTicket := hash.SHA1(secret + id.UID() + sum1)
+
+	if strings.ToUpper(ticket) != strings.ToUpper(expectTicket) {
+		logger.I("invalid ticket, expected=%s, actually=%s, secret=%s, to=%s, from=%s", expectTicket, ticket, secret, msg.To, id.UID())
+		// invalid ticket
+		_ = a.gateway.EnqueueMessage(dc.GetInfo().ID, messages.NewMessage(msg.GetSeq(), messages.ActionNotifyForbidden, "ticket expired"))
+		return true
+	}
+	return false
 }
 
 func (a *Authenticator) ClientAuthMessageInterceptor(dc DefaultClient, msg *messages.GlideMessage) (intercept bool) {
 	if msg.Action != messages.ActionAuthenticate {
 		return false
 	}
+
 	intercept = true
 
+	var err error
+	var errMsg string
+	var newId ID
+	var span int64
+	var authCredentials *ClientAuthCredentials
+
 	credential := EncryptedCredential{}
-	err := msg.Data.Deserialize(&credential)
+	err = msg.Data.Deserialize(&credential)
 	if err != nil {
-		_ = dc.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid authenticate message"))
-		return
+		errMsg = "invalid authenticate message"
+		goto DONE
 	}
 
-	authCredentials, err := a.credentialCrypto.DecryptCredentials([]byte(credential.Credential))
-	if err != nil {
-		_ = dc.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid authenticate message"))
-		return
+	if len(credential.Credential) < 5 {
+		errMsg = "invalid authenticate message"
+		goto DONE
 	}
 
-	id, err := a.updateClient(dc, authCredentials)
+	authCredentials, err = a.credentialCrypto.DecryptCredentials([]byte(credential.Credential))
 	if err != nil {
-		_ = dc.EnqueueMessage(messages.NewMessage(0, messages.ActionNotifyError, "invalid authenticate message"))
-		return
+		errMsg = "invalid authenticate message"
+		goto DONE
 	}
-	_ = a.gateway.EnqueueMessage(id, messages.NewMessage(msg.GetSeq(), messages.ActionNotifySuccess, nil))
 
+	span = time.Now().UnixMilli() - authCredentials.Timestamp
+	if span > 1500*1000 {
+		errMsg = "credential expired"
+		goto DONE
+	}
+
+	newId, err = a.updateClient(dc, authCredentials)
+
+DONE:
+
+	logger.D("client auth message intercepted %s, %v", dc.GetInfo().ID, err)
+
+	if err != nil || errMsg != "" {
+		_ = a.gateway.EnqueueMessage(dc.GetInfo().ID, messages.NewMessage(msg.GetSeq(), messages.ActionNotifyError, errMsg))
+	} else {
+		_ = a.gateway.EnqueueMessage(newId, messages.NewMessage(msg.GetSeq(), messages.ActionNotifySuccess, nil))
+	}
 	return
 }
 
@@ -204,9 +271,14 @@ func (a *Authenticator) updateClient(dc DefaultClient, authCredentials *ClientAu
 
 	dc.SetCredentials(authCredentials)
 
-	newID := NewID("", authCredentials.UserID, authCredentials.DeviceID)
-	err := a.gateway.SetClientID(dc.GetInfo().ID, newID)
+	oldID := dc.GetInfo().ID
+	newID := NewID2(authCredentials.UserID)
+	err := a.gateway.SetClientID(oldID, newID)
 	if IsIDAlreadyExist(err) {
+		if newID.Equals(oldID) {
+			// already authenticated
+			return newID, nil
+		}
 		tempID, _ := GenTempID("")
 		err = a.gateway.SetClientID(newID, tempID)
 		if err != nil {
@@ -217,10 +289,10 @@ func (a *Authenticator) updateClient(dc DefaultClient, authCredentials *ClientAu
 			DeviceId:   authCredentials.DeviceID,
 		})
 		_ = a.gateway.EnqueueMessage(tempID, kickOut)
-		err = a.gateway.SetClientID(dc.GetInfo().ID, newID)
+		err = a.gateway.SetClientID(oldID, newID)
 		if err != nil {
 			return "", err
 		}
 	}
-	return "", err
+	return newID, err
 }

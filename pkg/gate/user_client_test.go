@@ -161,7 +161,7 @@ func (m *mockConnection) GetConnInfo() *conn.ConnectionInfo {
 type mockGateway struct {
 }
 
-func (m mockGateway) UpdateClient(id ID, info *ClientTicket) error {
+func (m mockGateway) UpdateClient(id ID, info *ClientSecrets) error {
 	//TODO implement me
 	panic("implement me")
 }

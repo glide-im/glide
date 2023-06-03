@@ -10,10 +10,16 @@ const (
 	ActionHeartbeat                  = "heartbeat"
 	ActionNotifyUnknownAction        = "notify.unknown.action"
 
-	ActionAuthenticate  = "authenticate"
-	ActionNotifyError   = "notify.error"
-	ActionNotifySuccess = "notify.success"
-	ActionNotifyKickOut = "notify.kickout"
+	ActionChatMessage       = "message.chat"
+	ActionChatMessageResend = "message.chat.resend"
+	ActionGroupMessage      = "message.group"
+
+	ActionAuthenticate          = "authenticate"
+	ActionNotifyError           = "notify.error"
+	ActionNotifySuccess         = "notify.success"
+	ActionNotifyKickOut         = "notify.kickout"
+	ActionNotifyForbidden       = "notify.forbidden"
+	ActionNotifyUnauthenticated = "notify.unauthenticated"
 
 	ActionInternalOnline  = "internal.online"
 	ActionInternalOffline = "internal.offline"
