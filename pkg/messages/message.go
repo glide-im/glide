@@ -16,6 +16,7 @@ type GlideMessage struct {
 	From   string `json:"from,omitempty"`
 	To     string `json:"to,omitempty"`
 	Data   *Data  `json:"data,omitempty"`
+	Msg    string `json:"msg,omitempty"`
 
 	Extra map[string]string `json:"extra,omitempty"`
 }

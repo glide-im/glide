@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"crypto"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -45,4 +46,28 @@ func TestID_Gateway(t *testing.T) {
 
 	id = NewID2("uid")
 	assert.Equal(t, "", id.Gateway())
+}
+
+func TestAesCBC_Decrypt(t *testing.T) {
+
+	key := crypto.SHA512.New().Sum([]byte("password"))
+	cbcCrypto := NewAesCBCCrypto(key)
+
+	credentials := ClientAuthCredentials{
+		Type:         0,
+		UserID:       "1234",
+		DeviceID:     "1",
+		DeviceName:   "1",
+		Ticket:       nil,
+		ConnectionID: "1",
+		Timestamp:    0,
+	}
+	encryptCredentials, err := cbcCrypto.EncryptCredentials(&credentials)
+	assert.NoError(t, err)
+
+	t.Log(string(encryptCredentials))
+	decryptCredentials, err := cbcCrypto.DecryptCredentials(encryptCredentials)
+	assert.NoError(t, err)
+
+	assert.Equal(t, decryptCredentials.UserID, credentials.UserID)
 }

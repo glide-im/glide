@@ -58,3 +58,8 @@ type AckMessage struct {
 type AckNotify struct {
 	Mid int64 `json:"mid,omitempty"`
 }
+
+type KickOutNotify struct {
+	DeviceId   string `json:"device_id,omitempty"`
+	DeviceName string `json:"device_name,omitempty"`
+}
