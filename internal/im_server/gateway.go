@@ -19,8 +19,10 @@ type GatewayMetrics struct {
 	Conn         *ConnectionMetrics
 }
 
+var _ gate.DefaultGateway = (*GatewayServer)(nil)
+
 type GatewayServer struct {
-	*gate.Impl
+	decorator *gate.Impl
 
 	server conn.Server
 	h      gate.MessageHandler
@@ -32,9 +34,21 @@ type GatewayServer struct {
 	metrics *GatewayMetrics
 }
 
+func (c *GatewayServer) GetClient(id gate.ID) gate.Client {
+	return c.decorator.GetClient(id)
+}
+
+func (c *GatewayServer) GetAll() map[gate.ID]gate.Info {
+	return c.decorator.GetAll()
+}
+
+func (c *GatewayServer) AddClient(cs gate.Client) {
+	c.decorator.AddClient(cs)
+}
+
 func NewServer(id string, addr string, port int, secretKey string) (*GatewayServer, error) {
 	srv := GatewayServer{}
-	srv.Impl, _ = gate.NewServer(
+	srv.decorator, _ = gate.NewServer(
 		&gate.Options{
 			ID:                    id,
 			MaxMessageConcurrency: 30_0000,
@@ -82,7 +96,7 @@ func (c *GatewayServer) SetMessageHandler(h gate.MessageHandler) {
 		h(id, msg)
 	}
 	c.h = handler
-	c.Impl.SetMessageHandler(handler)
+	c.decorator.SetMessageHandler(handler)
 }
 
 // HandleConnection 当一个用户连接建立后, 由该方法创建 UserClient 实例 UserClient 并管理该连接, 返回该由连接创建客户端的标识 id
@@ -102,7 +116,7 @@ func (c *GatewayServer) HandleConnection(conn conn.Connection) gate.ID {
 		CloseImmediately:        false,
 	})
 	ret.SetID(id)
-	c.Impl.AddClient(ret)
+	c.decorator.AddClient(ret)
 
 	// 开始处理连接的消息
 	ret.Run()
@@ -119,7 +133,7 @@ func (c *GatewayServer) HandleConnection(conn conn.Connection) gate.ID {
 }
 
 func (c *GatewayServer) EnqueueMessage(id gate.ID, msg *messages.GlideMessage) error {
-	err := c.Impl.EnqueueMessage(id, msg)
+	err := c.decorator.EnqueueMessage(id, msg)
 	if err != nil {
 		c.metrics.Message.Out()
 	} else {
@@ -129,7 +143,7 @@ func (c *GatewayServer) EnqueueMessage(id gate.ID, msg *messages.GlideMessage) e
 }
 
 func (c *GatewayServer) SetClientID(oldID, newID gate.ID) error {
-	err := c.Impl.SetClientID(oldID, newID)
+	err := c.decorator.SetClientID(oldID, newID)
 	if err == nil {
 		c.metrics.Conn.Login()
 	}
@@ -139,12 +153,12 @@ func (c *GatewayServer) SetClientID(oldID, newID gate.ID) error {
 func (c *GatewayServer) ExitClient(id gate.ID) error {
 	id.SetGateway(c.gateID)
 
-	client := c.Impl.GetClient(id)
+	client := c.decorator.GetClient(id)
 	if client != nil {
 		c.metrics.Conn.Exit(client.GetInfo())
 	}
 
-	err := c.Impl.ExitClient(id)
+	err := c.decorator.ExitClient(id)
 	return err
 }
 
@@ -152,4 +166,8 @@ func (c *GatewayServer) GetState() GatewayMetrics {
 	span := time.Now().Unix() - c.metrics.StartAt.Unix()
 	c.metrics.RunningHours = float64(span) / 60.0 / 60.0
 	return *c.metrics
+}
+
+func (c *GatewayServer) UpdateClient(id gate.ID, info *gate.ClientSecrets) error {
+	return c.decorator.UpdateClient(id, info)
 }

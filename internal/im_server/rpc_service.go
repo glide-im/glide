@@ -3,6 +3,7 @@ package im_server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/glide-im/glide/im_service/proto"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
@@ -12,11 +13,11 @@ import (
 )
 
 type RpcServer struct {
-	gateway gate.Gateway
+	gateway gate.Server
 	sub     subscription_impl.SubscribeWrap
 }
 
-func RunRpcServer(options *rpc.ServerOptions, gate gate.Gateway, subscribe subscription.Subscribe) error {
+func RunRpcServer(options *rpc.ServerOptions, gate gate.Server, subscribe subscription.Subscribe) error {
 	server := rpc.NewBaseServer(options)
 	rpcServer := RpcServer{
 		gateway: gate,
@@ -30,19 +31,33 @@ func (r *RpcServer) UpdateClient(ctx context.Context, request *proto.UpdateClien
 	id := gate.ID(request.GetId())
 
 	var err error
-	if request.GetClose() {
-		err = r.gateway.ExitClient(id)
-	}
-	if request.GetNewId() != "" {
-		// TODO
+	switch request.Type {
+	case proto.UpdateClient_UpdateID:
 		err = r.gateway.SetClientID(id, gate.ID(request.GetNewId()))
-
+		break
+	case proto.UpdateClient_Close:
+		err = r.gateway.ExitClient(id)
+		break
+	case proto.UpdateClient_UpdateSecret:
+		secrets := &gate.ClientSecrets{
+			MessageDeliverSecret: request.GetSecret(),
+		}
+		gt := r.gateway
+		err2 := gt.UpdateClient(id, secrets)
+		if err2 != nil {
+			err = err2
+		}
+		break
+	default:
+		err = errors.New("unknown update type")
 	}
 	if err != nil {
 		response.Code = int32(proto.Response_ERROR)
 		response.Msg = err.Error()
+	} else {
+		response.Code = int32(proto.Response_OK)
 	}
-	return nil
+	return err
 }
 
 func (r *RpcServer) EnqueueMessage(ctx context.Context, request *proto.EnqueueMessageRequest, response *proto.Response) error {
@@ -60,7 +75,7 @@ func (r *RpcServer) EnqueueMessage(ctx context.Context, request *proto.EnqueueMe
 		response.Code = int32(proto.Response_ERROR)
 		response.Msg = err.Error()
 	}
-	return nil
+	return err
 }
 
 ////////////////////////////////////// Subscription //////////////////////////////////////////////

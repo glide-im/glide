@@ -14,12 +14,7 @@ type GatewayRpcClient struct {
 }
 
 func (I *GatewayRpcClient) UpdateClient(ctx context.Context, request *proto.UpdateClient, response *proto.Response) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (I *GatewayRpcClient) Status(ctx context.Context, request interface{}, response interface{}) error {
-	return I.cli.Call(ctx, "Status", request, response)
+	return I.cli.Call(ctx, "UpdateClient", request, response)
 }
 
 func (I *GatewayRpcClient) EnqueueMessage(ctx context.Context, request *proto.EnqueueMessageRequest, response *proto.Response) error {

@@ -14,9 +14,18 @@ message Response {
 }
 
 message UpdateClient {
+  enum UpdateType {
+    _ = 0;
+    UpdateID = 1;
+    Close = 2;
+    Kick = 3;
+    UpdateSecret = 4;
+  }
   string id = 1;
-  bool close = 2;
   string newId = 3;
+  string secret = 4;
+  string message = 5;
+  UpdateType type = 6;
 }
 
 message EnqueueMessageRequest {

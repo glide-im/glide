@@ -35,16 +35,6 @@ type GatewayRpcImpl struct {
 	gate *GatewayRpcClient
 }
 
-func (i *GatewayRpcImpl) SetClientID(old gate.ID, new_ gate.ID) error {
-	//TODO implement me update client
-	panic("implement me")
-}
-
-func (i *GatewayRpcImpl) ExitClient(id gate.ID) error {
-	//TODO implement me update client
-	panic("implement me")
-}
-
 func NewGatewayRpcImplWithClient(client *rpc.BaseClient) *GatewayRpcImpl {
 	return &GatewayRpcImpl{
 		gate: &GatewayRpcClient{
@@ -59,6 +49,38 @@ func NewGatewayRpcImpl(opts *rpc.ClientOptions) (*GatewayRpcImpl, error) {
 		return nil, err
 	}
 	return NewGatewayRpcImplWithClient(cli), nil
+}
+
+func (i *GatewayRpcImpl) SetClientID(old gate.ID, new_ gate.ID) error {
+	response := proto.Response{}
+	ctx := context.TODO()
+	request := proto.UpdateClient{
+		Type:  proto.UpdateClient_UpdateID,
+		Id:    string(old),
+		NewId: string(new_),
+	}
+	return i.gate.UpdateClient(ctx, &request, &response)
+}
+
+func (i *GatewayRpcImpl) UpdateClient(id gate.ID, info *gate.ClientSecrets) error {
+	response := proto.Response{}
+	ctx := context.TODO()
+	request := proto.UpdateClient{
+		Type:   proto.UpdateClient_UpdateSecret,
+		Id:     string(id),
+		Secret: info.MessageDeliverSecret,
+	}
+	return i.gate.UpdateClient(ctx, &request, &response)
+}
+
+func (i *GatewayRpcImpl) ExitClient(id gate.ID) error {
+	response := proto.Response{}
+	ctx := context.TODO()
+	request := proto.UpdateClient{
+		Type: proto.UpdateClient_Close,
+		Id:   string(id),
+	}
+	return i.gate.UpdateClient(ctx, &request, &response)
 }
 
 func (i *GatewayRpcImpl) EnqueueMessage(id gate.ID, message *messages.GlideMessage) error {

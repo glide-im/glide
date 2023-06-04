@@ -3,6 +3,7 @@ package gate
 import (
 	"errors"
 	"github.com/glide-im/glide/pkg/conn"
+	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/panjf2000/ants/v2"
 	"log"
@@ -63,11 +64,9 @@ type Options struct {
 	MaxMessageConcurrency int
 }
 
-var _ Gateway = (*Impl)(nil)
+var _ DefaultGateway = (*Impl)(nil)
 
 type Impl struct {
-	Gateway
-
 	id string
 
 	// clients is a map of all connected clients
@@ -134,6 +133,29 @@ func (c *Impl) GetAll() map[ID]Info {
 
 func (c *Impl) SetMessageHandler(h MessageHandler) {
 	c.msgHandler = h
+}
+
+func (c *Impl) UpdateClient(id ID, info *ClientSecrets) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	id.SetGateway(c.id)
+
+	logger.D("gateway", "update client %s, %v", id, info)
+
+	cli, ok := c.clients[id]
+	if !ok || cli == nil {
+		return errors.New(errClientNotExist)
+	}
+
+	dc, ok := cli.(DefaultClient)
+	if ok {
+		credentials := dc.GetCredentials()
+		credentials.Secrets = info
+		dc.SetCredentials(credentials)
+	}
+
+	return nil
 }
 
 func (c *Impl) AddClient(cs Client) {

@@ -2,6 +2,7 @@ package gate
 
 import (
 	"crypto/sha512"
+	"github.com/glide-im/glide/pkg/hash"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -56,7 +57,7 @@ func TestAesCBC_Decrypt(t *testing.T) {
 
 	credentials := ClientAuthCredentials{
 		Type:       1,
-		UserID:     "544601",
+		UserID:     "",
 		DeviceID:   "1",
 		DeviceName: "iPhone 6s",
 		Secrets: &ClientSecrets{
@@ -73,4 +74,13 @@ func TestAesCBC_Decrypt(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, decryptCredentials.UserID, credentials.UserID)
+}
+
+func TestGenerateTicket(t *testing.T) {
+
+	secret := "secret"
+	sum1 := hash.SHA1(secret + "to")
+	expectTicket := hash.SHA1(secret + "from" + sum1)
+
+	t.Log(expectTicket)
 }

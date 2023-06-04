@@ -12,11 +12,37 @@ import (
 /// 用于 HTTP API 接口等非 IM 业务配合使用
 
 func main() {
+
+	RpcGatewayClientUpdateClient()
+	return
+
 	// 消息网关接口(用户管理用户连接, 用户状态)
 	RpcGatewayClientExample()
 
 	// 发布订阅(群聊)
 	RpcSubscriberClientExample()
+}
+
+func RpcGatewayClientUpdateClient() {
+
+	options := &rpc.ClientOptions{
+		Addr: "127.0.0.1",
+		Port: 8092,
+		Name: "im_rpc_server",
+	}
+	cli, err := client.NewGatewayRpcImpl(options)
+
+	defer cli.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	err = cli.UpdateClient(gate.NewID2("544607"), &gate.ClientSecrets{MessageDeliverSecret: "secret"})
+	//err = cli.EnqueueMessage(gate.NewID2("544607"), messages.NewEmptyMessage())
+	//err = cli.ExitClient(gate.NewID2("544607"))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func RpcGatewayClientExample() {

@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"github.com/glide-im/glide/pkg/logger"
 	etcd "github.com/rpcxio/rpcx-etcd/client"
 	"github.com/smallnest/rpcx/client"
 	"github.com/smallnest/rpcx/protocol"
@@ -73,6 +74,7 @@ func (c *BaseClient) Broadcast(fn string, request, reply interface{}) error {
 }
 
 func (c *BaseClient) Call(ctx context.Context, fn string, arg interface{}, reply interface{}) error {
+	logger.D("rpc call %s, args=%v", fn, arg)
 	err := c.cli.Call(ctx, fn, arg, reply)
 	return err
 }
