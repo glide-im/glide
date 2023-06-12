@@ -1,7 +1,4 @@
-## glide-core
-
-本项目是一个消息系统的基础框架，对一些基础组件进行抽象, 提供一些基础工具以供其他项目共用, 并考虑方便的扩展各种常见场景, 如: 即时通讯, 实时订阅等, 
-项目中也有一些常见场景的实现, 例如 `gate/gateway` 实现了一个长连接消息网关.
+## glide
 
 **[立即体验](http://im.dengzii.com/)**
 
@@ -15,6 +12,8 @@
 
 `messages` 包提供了客户端和服务端通讯的消息实体, 类型及消息编解码器. `GlideMessage` 为最基本的公共消息实体. 
 
-**实例项目**
+**相关项目**
 
-- 即时通讯服务: [glide-im/im-service](https://github.com/glide-im/im-service)
+[TypeScript WebApp](https://github.com/glide-im/glide_ts_sdk)
+
+[业务 HTTP API接口](https://github.com/glide-im/api)
