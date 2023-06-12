@@ -3,7 +3,7 @@ package message_store_db
 import (
 	"database/sql"
 	"fmt"
-	"github.com/glide-im/glide/internal/config"
+	"github.com/glide-im/glide/config"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/store"
 	_ "github.com/go-sql-driver/mysql"

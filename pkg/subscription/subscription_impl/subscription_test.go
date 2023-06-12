@@ -13,7 +13,7 @@ func (m *mockStore) NextSegmentSequence(id subscription.ChanID, info subscriptio
 	return 1, 10000, nil
 }
 
-func (m *mockStore) StoreMessage(ch subscription.ChanID, msg subscription.Message) error {
+func (m *mockStore) StoreChannelMessage(ch subscription.ChanID, msg subscription.Message) error {
 	return nil
 }
 

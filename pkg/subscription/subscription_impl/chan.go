@@ -246,7 +246,7 @@ func (g *Channel) enqueue(m *PublishMessage) error {
 	}
 	cm.Seq = m.Seq
 	m.Message.Data = messages.NewData(&cm)
-	err = g.store.StoreMessage(g.id, m)
+	err = g.store.StoreChannelMessage(g.id, m)
 	if err != nil {
 		return err
 	}

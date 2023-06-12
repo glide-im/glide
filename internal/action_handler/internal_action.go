@@ -1,7 +1,7 @@
 package action_handler
 
 import (
-	"github.com/glide-im/glide/internal/config"
+	"github.com/glide-im/glide/config"
 	"github.com/glide-im/glide/internal/message_handler"
 	"github.com/glide-im/glide/internal/world_channel"
 	"github.com/glide-im/glide/pkg/gate"

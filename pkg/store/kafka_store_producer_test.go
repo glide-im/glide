@@ -1,4 +1,4 @@
-package store_kafka
+package store
 
 import (
 	"github.com/glide-im/glide/pkg/messages"
@@ -8,7 +8,7 @@ import (
 
 func TestNewProducer(t *testing.T) {
 
-	producer, err := NewProducer([]string{"localhost:9092"})
+	producer, err := NewKafkaProducer([]string{"localhost:9092"})
 	defer producer.Close()
 	if err != nil {
 		t.Error(err)

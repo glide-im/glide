@@ -12,7 +12,7 @@ func (c *SubscriptionMessageStore) NextSegmentSequence(id subscription.ChanID, i
 	return 1, math.MaxInt64, nil
 }
 
-func (c *SubscriptionMessageStore) StoreMessage(ch subscription.ChanID, msg subscription.Message) error {
+func (c *SubscriptionMessageStore) StoreChannelMessage(ch subscription.ChanID, msg subscription.Message) error {
 	return nil
 }
 
@@ -23,6 +23,6 @@ func (i *IdleSubscriptionStore) NextSegmentSequence(id subscription.ChanID, info
 	return 1, math.MaxInt64, nil
 }
 
-func (i *IdleSubscriptionStore) StoreMessage(ch subscription.ChanID, msg subscription.Message) error {
+func (i *IdleSubscriptionStore) StoreChannelMessage(ch subscription.ChanID, msg subscription.Message) error {
 	return nil
 }

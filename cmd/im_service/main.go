@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
+	"github.com/glide-im/glide/config"
 	"github.com/glide-im/glide/internal/action_handler"
-	"github.com/glide-im/glide/internal/config"
 	"github.com/glide-im/glide/internal/im_server"
 	"github.com/glide-im/glide/internal/message_handler"
 	"github.com/glide-im/glide/internal/message_store_db"
@@ -56,16 +56,24 @@ func main() {
 
 	var cStore store.MessageStore = &message_store_db.IdleChatMessageStore{}
 	var sStore store.SubscriptionStore = &message_store_db.IdleSubscriptionStore{}
-	var seqStore subscription_impl.ChannelSequenceStore = &message_store_db.IdleSubscriptionStore{}
 
 	if config.Common.StoreMessageHistory {
-		dbStore, err := message_store_db.New(config.MySql)
-		if err != nil {
-			panic(err)
+		if config.Kafka != nil && len(config.Kafka.Address) != 0 {
+			producer, err := store.NewKafkaProducer(config.Kafka.Address)
+			if err != nil {
+				panic(err)
+			}
+			cStore = producer
+			sStore = producer
+		} else {
+			dbStore, err := message_store_db.New(config.MySql)
+			if err != nil {
+				panic(err)
+			}
+			cStore = dbStore
+			sStore = &message_store_db.SubscriptionMessageStore{}
 		}
-		cStore = dbStore
-		sStore = &message_store_db.SubscriptionMessageStore{}
-		seqStore = &message_store_db.SubscriptionMessageStore{}
+
 	} else {
 		logger.D("Common.StoreMessageHistory is false, message history will not be stored")
 	}
@@ -86,7 +94,7 @@ func main() {
 	action_handler.Setup(handler)
 	handler.InitDefaultHandler(nil)
 
-	subscription := subscription_impl.NewSubscription(sStore, seqStore)
+	subscription := subscription_impl.NewSubscription(sStore, sStore)
 	subscription.SetGateInterface(gateway)
 	options := bootstrap.Options{
 		Messaging:    handler,

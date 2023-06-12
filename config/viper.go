@@ -8,6 +8,7 @@ var (
 	WsServer  *WsServerConf
 	IMService *IMRpcServerConf
 	Redis     *RedisConf
+	Kafka     *KafkaConf
 )
 
 type CommonConf struct {
@@ -34,6 +35,10 @@ type IMRpcServerConf struct {
 	Network string
 	Etcd    []string
 	Name    string
+}
+
+type KafkaConf struct {
+	Address []string
 }
 
 type MySqlConf struct {
@@ -72,6 +77,7 @@ func MustLoad() {
 		WsServer    *WsServerConf
 		IMRpcServer *IMRpcServerConf
 		CommonConf  *CommonConf
+		KafkaConf   *KafkaConf
 	}{}
 
 	err = viper.Unmarshal(&c)
@@ -83,6 +89,7 @@ func MustLoad() {
 	IMService = c.IMRpcServer
 	Common = c.CommonConf
 	Redis = c.Redis
+	Kafka = c.KafkaConf
 
 	if Common == nil {
 		panic("CommonConf is nil")

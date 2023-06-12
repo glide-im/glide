@@ -21,6 +21,41 @@ func mockNewChannel(id subscription.ChanID) *Channel {
 type mockGate struct {
 }
 
+func (m mockGate) SetClientID(old gate.ID, new_ gate.ID) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGate) UpdateClient(id gate.ID, info *gate.ClientSecrets) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGate) ExitClient(id gate.ID) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGate) GetClient(id gate.ID) gate.Client {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGate) GetAll() map[gate.ID]gate.Info {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGate) SetMessageHandler(h gate.MessageHandler) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockGate) AddClient(cs gate.Client) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m mockGate) EnqueueMessage(gate.ID, *messages.GlideMessage) error {
 	return nil
 }
@@ -83,7 +118,7 @@ func TestChannel_PublishErr(t *testing.T) {
 	channel := mockNewChannel("test")
 
 	// invalid type
-	err := channel.Publish(&message{})
+	err := channel.Publish(&PublishMessage{})
 	assert.Error(t, err)
 
 	// permission denied
@@ -106,7 +141,7 @@ func TestGroup_PublishUnknownType(t *testing.T) {
 
 func TestGroup_PublishUnexpectedMessageType(t *testing.T) {
 	group := mockNewChannel("test")
-	err := group.Publish(&message{})
+	err := group.Publish(&PublishMessage{})
 	assert.Error(t, err)
 }
 

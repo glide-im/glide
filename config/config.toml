@@ -24,6 +24,9 @@ Password = "root"
 Db = "im-service"
 Charset = "utf8mb4"
 
+[Kafka]
+address = []
+
 [Redis] # 不保存离线消息时可不配置
 Host = ""
 Port = 6789
