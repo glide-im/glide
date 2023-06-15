@@ -21,5 +21,5 @@ type SubscriptionStore interface {
 	NextSegmentSequence(id subscription.ChanID, info subscription.ChanInfo) (int64, int64, error)
 
 	// StoreChannelMessage stores a published message.
-	StoreChannelMessage(ch subscription.ChanID, msg subscription.Message) error
+	StoreChannelMessage(ch subscription.ChanID, msg *messages.ChatMessage) error
 }

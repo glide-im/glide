@@ -77,7 +77,7 @@ func MustLoad() {
 		WsServer    *WsServerConf
 		IMRpcServer *IMRpcServerConf
 		CommonConf  *CommonConf
-		KafkaConf   *KafkaConf
+		Kafka       *KafkaConf
 	}{}
 
 	err = viper.Unmarshal(&c)
@@ -89,7 +89,7 @@ func MustLoad() {
 	IMService = c.IMRpcServer
 	Common = c.CommonConf
 	Redis = c.Redis
-	Kafka = c.KafkaConf
+	Kafka = c.Kafka
 
 	if Common == nil {
 		panic("CommonConf is nil")

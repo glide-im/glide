@@ -79,12 +79,8 @@ func (k *KafkaMessageStore) NextSegmentSequence(id subscription.ChanID, info sub
 	return 0, 0, nil
 }
 
-func (k *KafkaMessageStore) StoreChannelMessage(ch subscription.ChanID, m subscription.Message) error {
-	chatMessage, err2 := m.GetChatMessage()
-	if err2 != nil {
-		return err2
-	}
-	msgBytes, err := json.Marshal(chatMessage)
+func (k *KafkaMessageStore) StoreChannelMessage(ch subscription.ChanID, m *messages.ChatMessage) error {
+	msgBytes, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}

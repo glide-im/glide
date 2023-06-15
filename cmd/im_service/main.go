@@ -65,6 +65,7 @@ func main() {
 			}
 			cStore = producer
 			sStore = producer
+			logger.D("Kafka is configured, all message will push to kafka: %v", config.Kafka.Address)
 		} else {
 			dbStore, err := message_store_db.New(config.MySql)
 			if err != nil {

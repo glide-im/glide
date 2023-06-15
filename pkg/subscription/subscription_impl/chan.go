@@ -8,6 +8,7 @@ import (
 	"github.com/glide-im/glide/pkg/store"
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/glide-im/glide/pkg/timingwheel"
+	errors2 "github.com/pkg/errors"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -238,7 +239,7 @@ func (g *Channel) enqueue(m *PublishMessage) error {
 
 	cm, err := m.GetChatMessage()
 	if err != nil {
-		return err
+		return errors2.Wrap(err, "enqueue message deserialize body error")
 	}
 	m.Seq, err = g.nextSeq()
 	if err != nil {
@@ -246,9 +247,12 @@ func (g *Channel) enqueue(m *PublishMessage) error {
 	}
 	cm.Seq = m.Seq
 	m.Message.Data = messages.NewData(&cm)
-	err = g.store.StoreChannelMessage(g.id, m)
-	if err != nil {
-		return err
+
+	if m.Type == TypeMessage {
+		err = g.store.StoreChannelMessage(g.id, cm)
+		if err != nil {
+			return errors2.Wrap(err, "store channel message error")
+		}
 	}
 
 	select {

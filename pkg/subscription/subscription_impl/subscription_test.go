@@ -1,6 +1,7 @@
 package subscription_impl
 
 import (
+	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/subscription"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -13,7 +14,7 @@ func (m *mockStore) NextSegmentSequence(id subscription.ChanID, info subscriptio
 	return 1, 10000, nil
 }
 
-func (m *mockStore) StoreChannelMessage(ch subscription.ChanID, msg subscription.Message) error {
+func (m *mockStore) StoreChannelMessage(ch subscription.ChanID, msg *messages.ChatMessage) error {
 	return nil
 }
 

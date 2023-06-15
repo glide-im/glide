@@ -2,7 +2,6 @@ package action_handler
 
 import (
 	"github.com/glide-im/glide/config"
-	"github.com/glide-im/glide/internal/message_handler"
 	"github.com/glide-im/glide/internal/world_channel"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
@@ -35,7 +34,7 @@ func (o *InternalActionHandler) Handle(h *messaging.MessageInterfaceImpl, cliInf
 					}()
 
 					if config.Common.StoreOfflineMessage {
-						message_handler.PushOfflineMessage(h, cliInfo.ID.UID())
+						// message_handler.PushOfflineMessage(h, cliInfo.ID.UID())
 					}
 				}()
 			}

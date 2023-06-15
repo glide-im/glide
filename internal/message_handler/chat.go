@@ -16,7 +16,7 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 	msg.From = c.ID.UID()
 	msg.To = m.To
 
-	if msg.Mid == 0 {
+	if msg.Mid == 0 && m.Action != messages.ActionChatMessageResend {
 		// 当客户端发送一条 mid 为 0 的消息时表示这条消息未被服务端收到过, 或客户端未收到服务端的确认回执
 		err := d.store.StoreMessage(msg)
 		if err != nil {
@@ -39,7 +39,7 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 		if err != nil {
 			logger.E("ack notify message error %v", err)
 		}
-		return d.dispatchOffline(c, m)
+		return d.dispatchOffline(c, msg)
 	}
 	return nil
 }
@@ -65,10 +65,12 @@ func (d *MessageHandler) ackChatMessage(c *gate.Info, msg *messages.ChatMessage)
 }
 
 // dispatchOffline 接收者不在线, 离线推送
-func (d *MessageHandler) dispatchOffline(c *gate.Info, message *messages.GlideMessage) error {
+func (d *MessageHandler) dispatchOffline(c *gate.Info, message *messages.ChatMessage) error {
 	logger.D("dispatch offline message %v %v", c.ID, message)
-	if d.offlineHandleFn != nil {
-		d.offlineHandleFn(d, c, message)
+	err := d.store.StoreOffline(message)
+	if err != nil {
+		logger.E("store chat message error %v", err)
+		return err
 	}
 	return nil
 }
@@ -85,12 +87,17 @@ func (d *MessageHandler) dispatchOnline(c *gate.Info, msg *messages.ChatMessage)
 func (d *MessageHandler) dispatchAllDevice(uid string, m *messages.GlideMessage) bool {
 	devices := []string{"", "1", "2", "3"}
 
+	var ok = false
 	for _, device := range devices {
 		id := gate.NewID("", uid, device)
 		err := d.def.GetClientInterface().EnqueueMessage(id, m)
 		if err != nil {
-			logger.E("dispatch message error %v", err)
+			if !gate.IsClientNotExist(err) {
+				logger.E("dispatch message error %v", err)
+			}
+		} else {
+			ok = true
 		}
 	}
-	return true
+	return ok
 }

@@ -1,6 +1,7 @@
 package message_store_db
 
 import (
+	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/subscription"
 	"math"
 )
@@ -12,7 +13,7 @@ func (c *SubscriptionMessageStore) NextSegmentSequence(id subscription.ChanID, i
 	return 1, math.MaxInt64, nil
 }
 
-func (c *SubscriptionMessageStore) StoreChannelMessage(ch subscription.ChanID, msg subscription.Message) error {
+func (c *SubscriptionMessageStore) StoreChannelMessage(ch subscription.ChanID, msg *messages.ChatMessage) error {
 	return nil
 }
 
@@ -23,6 +24,6 @@ func (i *IdleSubscriptionStore) NextSegmentSequence(id subscription.ChanID, info
 	return 1, math.MaxInt64, nil
 }
 
-func (i *IdleSubscriptionStore) StoreChannelMessage(ch subscription.ChanID, msg subscription.Message) error {
+func (i *IdleSubscriptionStore) StoreChannelMessage(ch subscription.ChanID, msg *messages.ChatMessage) error {
 	return nil
 }

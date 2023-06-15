@@ -107,7 +107,7 @@ func (d *Data) Deserialize(i interface{}) error {
 			return nil
 		}
 	}
-	return errors.New("invalid data")
+	return errors.New("deserialize message data failed")
 }
 
 func (d *Data) String() string {
