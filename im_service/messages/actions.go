@@ -27,9 +27,10 @@ const (
 	ActionAckMessage  = "ack.message"
 	ActionAckNotify   = "ack.notify"
 
-	ActionApiAuth    = "api.auth"
-	ActionApiFailed  = "api.failed"
-	ActionApiSuccess = "api.success"
+	ActionApiAuth         = "api.auth"
+	ActionApiFailed       = "api.failed"
+	ActionApiSuccess      = "api.success"
+	ActionApiGroupMembers = "api.group.members"
 
 	ActionClientCustom = "message.cli"
 

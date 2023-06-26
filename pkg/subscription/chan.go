@@ -28,5 +28,7 @@ type Channel interface {
 
 	Publish(msg Message) error
 
+	GetSubscribers() []string
+
 	Close() error
 }

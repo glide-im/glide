@@ -1,4 +1,4 @@
-package message_handler
+package messaging
 
 import (
 	messages2 "github.com/glide-im/glide/im_service/messages"
@@ -8,7 +8,7 @@ import (
 )
 
 // handleChatMessage 分发用户单聊消息
-func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessage) error {
+func (d *MessageHandlerImpl) handleChatMessage(c *gate.Info, m *messages.GlideMessage) error {
 	msg := new(messages.ChatMessage)
 	if !d.unmarshalData(c, m, msg) {
 		return nil
@@ -44,17 +44,17 @@ func (d *MessageHandler) handleChatMessage(c *gate.Info, m *messages.GlideMessag
 	return nil
 }
 
-func (d *MessageHandler) handleChatRecallMessage(c *gate.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandlerImpl) handleChatRecallMessage(c *gate.Info, msg *messages.GlideMessage) error {
 	return d.handleChatMessage(c, msg)
 }
 
-func (d *MessageHandler) ackNotifyMessage(c *gate.Info, m *messages.ChatMessage) error {
+func (d *MessageHandlerImpl) ackNotifyMessage(c *gate.Info, m *messages.ChatMessage) error {
 	ackNotify := messages.AckNotify{Mid: m.Mid}
 	msg := messages.NewMessage(0, messages2.ActionAckNotify, &ackNotify)
 	return d.def.GetClientInterface().EnqueueMessage(c.ID, msg)
 }
 
-func (d *MessageHandler) ackChatMessage(c *gate.Info, msg *messages.ChatMessage) error {
+func (d *MessageHandlerImpl) ackChatMessage(c *gate.Info, msg *messages.ChatMessage) error {
 	ackMsg := messages.AckMessage{
 		CliMid: msg.CliMid,
 		Mid:    msg.Mid,
@@ -65,7 +65,7 @@ func (d *MessageHandler) ackChatMessage(c *gate.Info, msg *messages.ChatMessage)
 }
 
 // dispatchOffline 接收者不在线, 离线推送
-func (d *MessageHandler) dispatchOffline(c *gate.Info, message *messages.ChatMessage) error {
+func (d *MessageHandlerImpl) dispatchOffline(c *gate.Info, message *messages.ChatMessage) error {
 	logger.D("dispatch offline message %v %v", c.ID, message)
 	err := d.store.StoreOffline(message)
 	if err != nil {
@@ -76,7 +76,7 @@ func (d *MessageHandler) dispatchOffline(c *gate.Info, message *messages.ChatMes
 }
 
 // dispatchOnline 接收者在线, 直接投递消息
-func (d *MessageHandler) dispatchOnline(c *gate.Info, msg *messages.ChatMessage) error {
+func (d *MessageHandlerImpl) dispatchOnline(c *gate.Info, msg *messages.ChatMessage) error {
 	receiverMsg := msg
 	msg.From = c.ID.UID()
 	dispatchMsg := messages.NewMessage(-1, messages2.ActionChatMessage, receiverMsg)
@@ -84,7 +84,7 @@ func (d *MessageHandler) dispatchOnline(c *gate.Info, msg *messages.ChatMessage)
 }
 
 // TODO optimize 2022-6-20 11:18:24
-func (d *MessageHandler) dispatchAllDevice(uid string, m *messages.GlideMessage) bool {
+func (d *MessageHandlerImpl) dispatchAllDevice(uid string, m *messages.GlideMessage) bool {
 	devices := []string{"", "1", "2", "3"}
 
 	var ok = false

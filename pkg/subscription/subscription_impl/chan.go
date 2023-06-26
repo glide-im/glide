@@ -129,6 +129,16 @@ func (g *Channel) Update(ci *subscription.ChanInfo) error {
 	return nil
 }
 
+func (g *Channel) GetSubscribers() []string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	var result []string
+	for id := range g.subscribers {
+		result = append(result, string(id))
+	}
+	return result
+}
+
 func (g *Channel) Subscribe(id subscription.SubscriberID, extra interface{}) error {
 	so, err := getSubscriberOptions(extra)
 	if err != nil {

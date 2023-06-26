@@ -1,4 +1,4 @@
-package message_handler
+package messaging
 
 import (
 	messages2 "github.com/glide-im/glide/im_service/messages"
@@ -6,7 +6,6 @@ import (
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
-	"github.com/glide-im/glide/pkg/messaging"
 	"time"
 )
 
@@ -16,11 +15,11 @@ const (
 
 var Enable = false
 
-func GetHandleFn() func(h *MessageHandler, ci *gate.Info, m *messages.GlideMessage) {
+func GetHandleFn() func(h *MessageHandlerImpl, ci *gate.Info, m *messages.GlideMessage) {
 	return handler
 }
 
-func handler(_ *MessageHandler, _ *gate.Info, m *messages.GlideMessage) {
+func handler(_ *MessageHandlerImpl, _ *gate.Info, m *messages.GlideMessage) {
 	if !Enable {
 		return
 	}
@@ -48,7 +47,7 @@ func storeOfflineMessage(to string, msg string) {
 	db.Redis.Expire(key, time.Hour*24*2)
 }
 
-func PushOfflineMessage(h *messaging.MessageInterfaceImpl, id string) {
+func PushOfflineMessage(h *MessageInterfaceImpl, id string) {
 	key := KeyRedisOfflineMsgPrefix + id
 	members, err := db.Redis.SMembers(key).Result()
 	if err != nil {

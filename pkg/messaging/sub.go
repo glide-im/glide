@@ -1,4 +1,4 @@
-package message_handler
+package messaging
 
 import (
 	messages2 "github.com/glide-im/glide/im_service/messages"
@@ -10,7 +10,7 @@ import (
 )
 
 // handleGroupMsg 分发群消息
-func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandlerImpl) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage) error {
 
 	id := subscription.ChanID(msg.To)
 
@@ -38,7 +38,19 @@ func (d *MessageHandler) handleGroupMsg(c *gate.Info, msg *messages.GlideMessage
 	return nil
 }
 
-func (d *MessageHandler) handleAckGroupMsgRequest(c *gate.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandlerImpl) handleApiGroupMembers(c *gate.Info, msg *messages.GlideMessage) error {
+	//id := subscription.ChanID(msg.To)
+	//
+	//cm := messages.ChatMessage{}
+	//e := msg.Data.Deserialize(&cm)
+	//if e != nil {
+	//	return e
+	//}
+
+	return nil
+}
+
+func (d *MessageHandlerImpl) handleAckGroupMsgRequest(c *gate.Info, msg *messages.GlideMessage) error {
 	ack := new(messages.AckGroupMessage)
 	if !d.unmarshalData(c, msg, ack) {
 		return nil

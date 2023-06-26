@@ -14,3 +14,7 @@ type ClientCustom struct {
 	Type    string      `json:"type,omitempty"`
 	Content interface{} `json:"content,omitempty"`
 }
+
+type QueryGroupOnlineMembers struct {
+	Id string
+}

@@ -1,4 +1,4 @@
-package message_handler
+package messaging
 
 import (
 	messages2 "github.com/glide-im/glide/im_service/messages"
@@ -6,12 +6,12 @@ import (
 	"github.com/glide-im/glide/pkg/messages"
 )
 
-func (d *MessageHandler) handleHeartbeat(cInfo *gate.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandlerImpl) handleHeartbeat(cInfo *gate.Info, msg *messages.GlideMessage) error {
 	return nil
 }
 
 // handleAckRequest 处理接收者收到消息发回来的确认消息
-func (d *MessageHandler) handleAckRequest(c *gate.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandlerImpl) handleAckRequest(c *gate.Info, msg *messages.GlideMessage) error {
 	ackMsg := new(messages.AckRequest)
 	if !d.unmarshalData(c, msg, ackMsg) {
 		return nil
@@ -23,7 +23,7 @@ func (d *MessageHandler) handleAckRequest(c *gate.Info, msg *messages.GlideMessa
 	return nil
 }
 
-func (d *MessageHandler) handleAckOffline(c *gate.Info, msg *messages.GlideMessage) error {
+func (d *MessageHandlerImpl) handleAckOffline(c *gate.Info, msg *messages.GlideMessage) error {
 	if c.ID.IsTemp() {
 		return nil
 	}
