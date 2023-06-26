@@ -9,8 +9,9 @@ import (
 	"github.com/glide-im/glide/internal/pkg/db"
 	"github.com/glide-im/glide/internal/server_state"
 	"github.com/glide-im/glide/internal/world_channel"
-	"github.com/glide-im/glide/pkg/bootstrap"
+	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
+	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/messaging"
 	"github.com/glide-im/glide/pkg/rpc"
 	"github.com/glide-im/glide/pkg/store"
@@ -92,19 +93,22 @@ func main() {
 	}
 	action_handler.Setup(handler)
 	handler.InitDefaultHandler(nil)
+	handler.SetGate(gateway)
 
 	subscription := subscription_impl.NewSubscription(sStore, sStore)
 	subscription.SetGateInterface(gateway)
-	options := bootstrap.Options{
-		Messaging:    handler,
-		Gate:         gateway,
-		Subscription: subscription,
-	}
 
 	go func() {
 		logger.D("websocket listening on %s:%d", config.WsServer.Addr, config.WsServer.Port)
-		err = bootstrap.Bootstrap(&options)
 
+		gateway.SetMessageHandler(func(cliInfo *gate.Info, message *messages.GlideMessage) {
+			e := handler.Handle(cliInfo, message)
+			if e != nil {
+				logger.E("error: %v", e)
+			}
+		})
+
+		err = gateway.Run()
 		if err != nil {
 			panic(err)
 		}
