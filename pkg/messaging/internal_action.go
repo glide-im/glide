@@ -1,4 +1,4 @@
-package action_handler
+package messaging
 
 import (
 	"github.com/glide-im/glide/config"
@@ -6,14 +6,13 @@ import (
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
-	"github.com/glide-im/glide/pkg/messaging"
 	"time"
 )
 
 type InternalActionHandler struct {
 }
 
-func (o *InternalActionHandler) Handle(h *messaging.MessageInterfaceImpl, cliInfo *gate.Info, m *messages.GlideMessage) bool {
+func (o *InternalActionHandler) Handle(h *MessageInterfaceImpl, cliInfo *gate.Info, m *messages.GlideMessage) bool {
 	if m.GetAction().IsInternal() {
 		if !cliInfo.ID.IsTemp() {
 

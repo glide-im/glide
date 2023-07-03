@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"github.com/glide-im/glide/config"
-	"github.com/glide-im/glide/internal/action_handler"
 	"github.com/glide-im/glide/internal/im_server"
 	"github.com/glide-im/glide/internal/message_store_db"
 	"github.com/glide-im/glide/internal/pkg/db"
@@ -91,7 +90,6 @@ func main() {
 		messaging.Enable = true
 		handler.SetOfflineMessageHandler(messaging.GetHandleFn())
 	}
-	action_handler.Setup(handler)
 	handler.InitDefaultHandler(nil)
 	handler.SetGate(gateway)
 

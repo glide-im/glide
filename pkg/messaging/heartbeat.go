@@ -1,4 +1,4 @@
-package action_handler
+package messaging
 
 import (
 	"github.com/glide-im/glide/pkg/gate"

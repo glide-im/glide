@@ -72,6 +72,10 @@ func (d *MessageHandlerImpl) InitDefaultHandler(callback func(action messages.Ac
 		}
 		d.AddHandler(NewActionHandler(action, handlerFunc))
 	}
+
+	d.AddHandler(&InternalActionHandler{})
+	d.AddHandler(&ClientCustomMessageHandler{})
+	d.AddHandler(NewActionHandler(messages.ActionHeartbeat, handleHeartbeat))
 }
 
 func (d *MessageHandlerImpl) AddHandler(i MessageHandler) {
@@ -110,6 +114,18 @@ func (d *MessageHandlerImpl) unmarshalData(c *gate.Info, msg *messages.GlideMess
 	if err != nil {
 		logger.E("sender chat senderMsg %v", err)
 		return false
+	}
+	return true
+}
+
+func dispatch2AllDevice(h *MessageInterfaceImpl, uid string, m *messages.GlideMessage) bool {
+	devices := []string{"", "1", "2", "3"}
+	for _, device := range devices {
+		id := gate.NewID("", uid, device)
+		err := h.GetClientInterface().EnqueueMessage(id, m)
+		if err != nil && !gate.IsClientNotExist(err) {
+			logger.E("dispatch message error %v", err)
+		}
 	}
 	return true
 }

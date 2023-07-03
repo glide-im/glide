@@ -33,13 +33,6 @@ type Messaging interface {
 	SetGate(g gate.Gateway)
 }
 
-// Server is the messaging server.
-type Server interface {
-	Messaging
-
-	Run() error
-}
-
 // MessageValidator is used to validate message.
 // if error is not nil, this message will be handled by  MessageValidationHandler
 // the second return value is the reply message, if not nil, the message will be sent to
