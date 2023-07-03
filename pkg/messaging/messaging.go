@@ -9,24 +9,19 @@ import (
 	"github.com/panjf2000/ants/v2"
 )
 
-// MessageHandler is the interface for message handler
+// MessageHandler is the interface for message offlineMessageHandler
 type MessageHandler interface {
 	// Handle handles the message, returns true if the message is handled,
-	// otherwise the message is delegated to next handler.
+	// otherwise the message is delegated to next offlineMessageHandler.
 	Handle(h *MessageInterfaceImpl, cliInfo *gate.Info, message *messages.GlideMessage) bool
 }
 
-// Interface for messaging.
-type Interface interface {
+type Messaging interface {
 
 	// Handle handles message from gate, the entry point for the messaging.
 	Handle(clientInfo *gate.Info, msg *messages.GlideMessage) error
 
 	AddHandler(i MessageHandler)
-}
-
-type Messaging interface {
-	Interface
 
 	SetSubscription(g subscription.Interface)
 
@@ -79,7 +74,7 @@ func DefaultMessageValidator(msg *messages.GlideMessage) (error, *messages.Glide
 // HandlerFunc is used to handle message with specified action in ActionHandler
 type HandlerFunc func(cliInfo *gate.Info, message *messages.GlideMessage) error
 
-// ActionHandler is a handler for a specific message action.
+// ActionHandler is a offlineMessageHandler for a specific message action.
 type ActionHandler struct {
 	action messages.Action
 	fn     HandlerFunc
@@ -105,7 +100,7 @@ func (a *ActionHandler) Handle(h *MessageInterfaceImpl, cliInfo *gate.Info, mess
 
 type ReplyHandlerFunc func(cliInfo *gate.Info, message *messages.GlideMessage) (*messages.GlideMessage, error)
 
-// ActionWithReplyHandler is a handler for a specific message action, this handler will return a reply message.
+// ActionWithReplyHandler is a offlineMessageHandler for a specific message action, this offlineMessageHandler will return a reply message.
 type ActionWithReplyHandler struct {
 	action messages.Action
 	fn     ReplyHandlerFunc
@@ -145,7 +140,7 @@ type MessageInterfaceImpl struct {
 	// execPool 100 capacity goroutine pool, 假设每个消息处理需要10ms, 一个协程则每秒能处理100条消息
 	execPool *ants.Pool
 
-	// hc message handler chain
+	// hc message offlineMessageHandler chain
 	hc *handlerChain
 
 	subscription subscription.Interface

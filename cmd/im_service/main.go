@@ -86,11 +86,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if config.Common.StoreOfflineMessage {
-		messaging.Enable = true
-		handler.SetOfflineMessageHandler(messaging.GetHandleFn())
-	}
-	handler.InitDefaultHandler(nil)
+	messaging.StoreOfflineMessage = config.Common.StoreOfflineMessage
 	handler.SetGate(gateway)
 
 	subscription := subscription_impl.NewSubscription(sStore, sStore)

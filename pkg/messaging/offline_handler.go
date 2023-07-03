@@ -13,14 +13,10 @@ const (
 	KeyRedisOfflineMsgPrefix = "im:msg:offline:"
 )
 
-var Enable = false
+var StoreOfflineMessage = false
 
-func GetHandleFn() func(h *MessageHandlerImpl, ci *gate.Info, m *messages.GlideMessage) {
-	return handler
-}
-
-func handler(_ *MessageHandlerImpl, _ *gate.Info, m *messages.GlideMessage) {
-	if !Enable {
+func offlineMessageHandler(_ *MessageHandlerImpl, _ *gate.Info, m *messages.GlideMessage) {
+	if !StoreOfflineMessage {
 		return
 	}
 	if m.GetAction() == messages2.ActionChatMessage || m.GetAction() == messages2.ActionChatMessageResend {

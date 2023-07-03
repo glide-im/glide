@@ -18,7 +18,7 @@ type MessageHandlerOptions struct {
 	// OfflineHandleFn client offline, handle message
 	OfflineHandleFn func(h *MessageHandlerImpl, ci *gate.Info, pushMessage *messages.GlideMessage)
 
-	// DontInitDefaultHandler true will not init default action handler, MessageHandlerImpl.InitDefaultHandler
+	// DontInitDefaultHandler true will not init default action offlineMessageHandler, MessageHandlerImpl.InitDefaultHandler
 	DontInitDefaultHandler bool
 
 	// NotifyOnErr true express notify client on server error.
@@ -50,6 +50,7 @@ func NewHandlerWithOptions(opts *MessageHandlerOptions) (*MessageHandlerImpl, er
 	if !opts.DontInitDefaultHandler {
 		ret.InitDefaultHandler(nil)
 	}
+	ret.offlineHandleFn = offlineMessageHandler
 	return ret, nil
 }
 
@@ -70,12 +71,12 @@ func (d *MessageHandlerImpl) InitDefaultHandler(callback func(action messages.Ac
 		if callback != nil {
 			handlerFunc = callback(action, handlerFunc)
 		}
-		d.AddHandler(NewActionHandler(action, handlerFunc))
+		d.def.AddHandler(NewActionHandler(action, handlerFunc))
 	}
 
-	d.AddHandler(&InternalActionHandler{})
-	d.AddHandler(&ClientCustomMessageHandler{})
-	d.AddHandler(NewActionHandler(messages.ActionHeartbeat, handleHeartbeat))
+	d.def.AddHandler(&InternalActionHandler{})
+	d.def.AddHandler(&ClientCustomMessageHandler{})
+	d.def.AddHandler(NewActionHandler(messages.ActionHeartbeat, handleHeartbeat))
 }
 
 func (d *MessageHandlerImpl) AddHandler(i MessageHandler) {
@@ -92,11 +93,6 @@ func (d *MessageHandlerImpl) SetGate(g gate.Gateway) {
 
 func (d *MessageHandlerImpl) SetSubscription(s subscription.Interface) {
 	d.def.SetSubscription(s)
-}
-
-// SetOfflineMessageHandler called while client is offline
-func (d *MessageHandlerImpl) SetOfflineMessageHandler(fn func(h *MessageHandlerImpl, ci *gate.Info, m *messages.GlideMessage)) {
-	d.offlineHandleFn = fn
 }
 
 func (d *MessageHandlerImpl) dispatchGroupMessage(gid int64, msg *messages.ChatMessage) error {
