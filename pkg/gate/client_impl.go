@@ -142,6 +142,11 @@ func NewClient(conn conn.Connection, mgr Gateway, handler MessageHandler) Defaul
 func (c *UserClient) SetCredentials(credentials *ClientAuthCredentials) {
 	c.credentials = credentials
 	c.info.ConnectionId = credentials.ConnectionID
+	if credentials.ConnectionConfig != nil {
+		c.config.HeartbeatLostLimit = credentials.ConnectionConfig.AllowMaxHeartbeatLost
+		c.config.CloseImmediately = credentials.ConnectionConfig.CloseImmediately
+		c.config.ClientHeartbeatDuration = time.Duration(credentials.ConnectionConfig.HeartbeatDuration) * time.Second
+	}
 }
 
 func (c *UserClient) GetCredentials() *ClientAuthCredentials {
