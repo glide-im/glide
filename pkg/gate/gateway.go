@@ -8,6 +8,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"log"
 	"sync"
+	"time"
 )
 
 // Gateway is the basic and common interface for all gate implementations.
@@ -141,8 +142,6 @@ func (c *Impl) UpdateClient(id ID, info *ClientSecrets) error {
 
 	id.SetGateway(c.id)
 
-	logger.D("gateway", "update client %s, %v", id, info)
-
 	cli, ok := c.clients[id]
 	if !ok || cli == nil {
 		return errors.New(errClientNotExist)
@@ -153,6 +152,7 @@ func (c *Impl) UpdateClient(id ID, info *ClientSecrets) error {
 		credentials := dc.GetCredentials()
 		credentials.Secrets = info
 		dc.SetCredentials(credentials)
+		logger.D("gateway", "update client %s, %v", id, info.MessageDeliverSecret)
 	}
 
 	return nil
@@ -260,4 +260,103 @@ func (c *Impl) enqueueMessage(cli Client, msg *messages.GlideMessage) error {
 		return errors.New("enqueue message to client failed")
 	}
 	return nil
+}
+
+type WebsocketGatewayServer struct {
+	gateId    string
+	addr      string
+	port      int
+	server    conn.Server
+	decorator DefaultGateway
+	h         MessageHandler
+}
+
+func NewWebsocketServer(gateId string, addr string, port int, secretKey string) *WebsocketGatewayServer {
+	srv := WebsocketGatewayServer{}
+	srv.decorator, _ = NewServer(
+		&Options{
+			ID:                    gateId,
+			MaxMessageConcurrency: 30_0000,
+			SecretKey:             secretKey,
+		},
+	)
+	srv.addr = addr
+	srv.port = port
+	srv.gateId = gateId
+	options := &conn.WsServerOptions{
+		ReadTimeout:  time.Minute * 3,
+		WriteTimeout: time.Minute * 3,
+	}
+	srv.server = conn.NewWsServer(options)
+	return &srv
+}
+
+func (w *WebsocketGatewayServer) SetMessageHandler(h MessageHandler) {
+	w.h = h
+	w.decorator.SetMessageHandler(h)
+}
+
+func (w *WebsocketGatewayServer) HandleConnection(c conn.Connection) ID {
+	// 获取一个临时 uid 标识这个连接
+	id, err := GenTempID(w.gateId)
+	if err != nil {
+		logger.E("[gateway] gen temp id error: %v", err)
+		return ""
+	}
+	ret := NewClientWithConfig(c, w, w.h, &ClientConfig{
+		HeartbeatLostLimit:      3,
+		ClientHeartbeatDuration: time.Second * 30,
+		ServerHeartbeatDuration: time.Second * 30,
+		CloseImmediately:        false,
+	})
+	ret.SetID(id)
+	w.decorator.AddClient(ret)
+
+	// 开始处理连接的消息
+	ret.Run()
+
+	hello := messages.ServerHello{
+		TempID:            id.UID(),
+		HeartbeatInterval: 30,
+	}
+
+	m := messages.NewMessage(0, messages.ActionHello, hello)
+	_ = ret.EnqueueMessage(m)
+
+	return id
+}
+
+func (w *WebsocketGatewayServer) Run() error {
+	w.server.SetConnHandler(func(conn conn.Connection) {
+		w.HandleConnection(conn)
+	})
+	return w.server.Run(w.addr, w.port)
+}
+
+func (w *WebsocketGatewayServer) GetClient(id ID) Client {
+	return w.decorator.GetClient(id)
+}
+
+func (w *WebsocketGatewayServer) GetAll() map[ID]Info {
+	return w.decorator.GetAll()
+}
+
+func (w *WebsocketGatewayServer) AddClient(cs Client) {
+	w.decorator.AddClient(cs)
+}
+
+func (w *WebsocketGatewayServer) SetClientID(old ID, new_ ID) error {
+	return w.decorator.SetClientID(old, new_)
+}
+
+func (w *WebsocketGatewayServer) UpdateClient(id ID, info *ClientSecrets) error {
+	return w.decorator.UpdateClient(id, info)
+}
+
+func (w *WebsocketGatewayServer) ExitClient(id ID) error {
+	return w.decorator.ExitClient(id)
+}
+
+func (w *WebsocketGatewayServer) EnqueueMessage(id ID, message *messages.GlideMessage) error {
+	return w.decorator.EnqueueMessage(id, message)
 }

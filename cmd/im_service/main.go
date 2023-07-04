@@ -1,12 +1,10 @@
 package main
 
 import (
-	"flag"
 	"github.com/glide-im/glide/config"
-	"github.com/glide-im/glide/internal/im_server"
+	"github.com/glide-im/glide/im_service/server"
 	"github.com/glide-im/glide/internal/message_store_db"
 	"github.com/glide-im/glide/internal/pkg/db"
-	"github.com/glide-im/glide/internal/server_state"
 	"github.com/glide-im/glide/internal/world_channel"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
@@ -17,19 +15,7 @@ import (
 	"github.com/glide-im/glide/pkg/subscription/subscription_impl"
 )
 
-var state *string
-
-func init() {
-	state = flag.String("state", "", "show im server run state")
-	flag.Parse()
-}
-
 func main() {
-
-	if *state != "" {
-		server_state.ShowServerState("localhost:9091")
-		return
-	}
 
 	config.MustLoad()
 
@@ -43,15 +29,12 @@ func main() {
 		panic(err)
 	}
 
-	gateway, err := im_server.NewServer(
+	gateway := gate.NewWebsocketServer(
 		config.WsServer.ID,
 		config.WsServer.Addr,
 		config.WsServer.Port,
 		config.Common.SecretKey,
 	)
-	if err != nil {
-		panic(err)
-	}
 
 	var cStore store.MessageStore = &message_store_db.IdleChatMessageStore{}
 	var sStore store.SubscriptionStore = &message_store_db.IdleSubscriptionStore{}
@@ -108,11 +91,6 @@ func main() {
 		}
 	}()
 
-	go func() {
-		logger.D("state server is listening on 0.0.0.0:%d", 9091)
-		server_state.StartSrv(9091, gateway)
-	}()
-
 	err = world_channel.EnableWorldChannel(subscription_impl.NewSubscribeWrap(subscription))
 	if err != nil {
 		panic(err)
@@ -125,7 +103,7 @@ func main() {
 		Port:    config.IMService.Port,
 	}
 	logger.D("rpc %s listening on %s %s:%d", rpcOpts.Name, rpcOpts.Network, rpcOpts.Addr, rpcOpts.Port)
-	err = im_server.RunRpcServer(&rpcOpts, gateway, subscription)
+	err = server.RunRpcService(&rpcOpts, gateway, subscription)
 	if err != nil {
 		panic(err)
 	}

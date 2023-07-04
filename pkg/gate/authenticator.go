@@ -179,6 +179,9 @@ func NewAuthenticator(gateway DefaultGateway, key string) *Authenticator {
 
 func (a *Authenticator) MessageInterceptor(dc DefaultClient, msg *messages.GlideMessage) bool {
 
+	if dc.GetCredentials() == nil {
+		return false
+	}
 	switch msg.Action {
 	case messages.ActionGroupMessage, messages.ActionChatMessage, messages.ActionChatMessageResend:
 		break
@@ -256,6 +259,9 @@ func (a *Authenticator) ClientAuthMessageInterceptor(dc DefaultClient, msg *mess
 	newId, err = a.updateClient(dc, authCredentials)
 
 DONE:
+
+	ac, _ := json.Marshal(authCredentials)
+	logger.D("credential: %s", string(ac))
 
 	logger.D("client auth message intercepted %s, %v", dc.GetInfo().ID, err)
 
