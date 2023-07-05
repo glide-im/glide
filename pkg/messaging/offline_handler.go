@@ -1,7 +1,6 @@
 package messaging
 
 import (
-	messages2 "github.com/glide-im/glide/im_service/messages"
 	"github.com/glide-im/glide/internal/pkg/db"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
@@ -19,7 +18,7 @@ func offlineMessageHandler(_ *MessageHandlerImpl, _ *gate.Info, m *messages.Glid
 	if !StoreOfflineMessage {
 		return
 	}
-	if m.GetAction() == messages2.ActionChatMessage || m.GetAction() == messages2.ActionChatMessageResend {
+	if m.GetAction() == messages.ActionChatMessage || m.GetAction() == messages.ActionChatMessageResend {
 		c := messages.ChatMessage{}
 		err := m.Data.Deserialize(&c)
 		if err != nil {

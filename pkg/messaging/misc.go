@@ -1,7 +1,6 @@
 package messaging
 
 import (
-	messages2 "github.com/glide-im/glide/im_service/messages"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 )
@@ -16,7 +15,7 @@ func (d *MessageHandlerImpl) handleAckRequest(c *gate.Info, msg *messages.GlideM
 	if !d.unmarshalData(c, msg, ackMsg) {
 		return nil
 	}
-	ackNotify := messages.NewMessage(0, messages2.ActionAckNotify, ackMsg)
+	ackNotify := messages.NewMessage(0, messages.ActionAckNotify, ackMsg)
 
 	// 通知发送者, 对方已收到消息
 	d.dispatchAllDevice(ackMsg.From, ackNotify)

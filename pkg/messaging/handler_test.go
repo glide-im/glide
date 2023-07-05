@@ -9,7 +9,7 @@ import (
 
 func TestMessageHandler_InitDefaultHandler(t *testing.T) {
 
-	handler, err := NewHandlerWithOptions(&MessageHandlerOptions{
+	handler, err := NewHandlerWithOptions(nil, &MessageHandlerOptions{
 		MessageStore:           &store.IdleMessageStore{},
 		DontInitDefaultHandler: true,
 	})

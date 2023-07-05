@@ -9,36 +9,33 @@ import (
 	"time"
 )
 
-type InternalActionHandler struct {
+func (d *MessageHandlerImpl) handleInternalOffline(c *gate.Info, m *messages.GlideMessage) error {
+	go world_channel.OnUserOffline(c.ID)
+
+	d.userState.onUserOffline(c.ID)
+
+	return nil
 }
 
-func (o *InternalActionHandler) Handle(h *MessageInterfaceImpl, cliInfo *gate.Info, m *messages.GlideMessage) bool {
-	if m.GetAction().IsInternal() {
-		if !cliInfo.ID.IsTemp() {
+func (d *MessageHandlerImpl) handleInternalOnline(c *gate.Info, m *messages.GlideMessage) error {
 
-			switch m.GetAction() {
-			case messages.ActionInternalOffline:
-				go world_channel.OnUserOffline(gate.ID(m.Data.String()))
-			case messages.ActionInternalOnline:
-				go func() {
-					defer func() {
-						err, ok := recover().(error)
-						if err != nil && ok {
-							logger.ErrE("push offline message error", err)
-						}
-					}()
-					go func() {
-						time.Sleep(time.Second * 1)
-						world_channel.OnUserOnline(gate.ID(m.Data.String()))
-					}()
+	d.userState.onUserOnline(c.ID)
 
-					if config.Common.StoreOfflineMessage {
-						// message_handler.PushOfflineMessage(h, cliInfo.ID.UID())
-					}
-				}()
+	go func() {
+		defer func() {
+			err, ok := recover().(error)
+			if err != nil && ok {
+				logger.ErrE("push offline message error", err)
 			}
+		}()
+		go func() {
+			time.Sleep(time.Second * 1)
+			world_channel.OnUserOnline(c.ID)
+		}()
+
+		if config.Common.StoreOfflineMessage {
+			// message_handler.PushOfflineMessage(h, cliInfo.ID.UID())
 		}
-		return true
-	}
-	return false
+	}()
+	return nil
 }

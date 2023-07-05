@@ -2,8 +2,6 @@ package world_channel
 
 import (
 	"encoding/json"
-	"fmt"
-	messages2 "github.com/glide-im/glide/im_service/messages"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
@@ -49,19 +47,15 @@ func OnUserOnline(id gate.ID) {
 		_ = sub.Publish(chanId, &subscription_impl.PublishMessage{
 			From:    "system",
 			Type:    subscription_impl.TypeMessage,
-			Message: messages.NewMessage(0, messages2.ActionGroupMessage, b),
+			Message: messages.NewMessage(0, messages.ActionGroupMessage, b),
 		})
 
-		time.Sleep(time.Millisecond * 100)
-		b.Mid = time.Now().UnixNano()
-		b.SendAt = time.Now().Unix()
-		b.Type = 1
-		b.Content = fmt.Sprintf("欢迎来到世界频道, 在这个频道, 你可以与服务器所有用户聊天, 你的 UID 为: %s", id.UID())
+		time.Sleep(time.Millisecond * 400)
 		_ = sub.Publish(chanId, &subscription_impl.PublishMessage{
 			From:    "system",
 			Type:    subscription_impl.TypeMessage,
 			To:      []subscription.SubscriberID{myId},
-			Message: messages.NewMessage(0, messages2.ActionGroupMessage, b),
+			Message: messages.NewMessage(0, messages.ActionGroupMessage, b),
 		})
 	} else {
 		logger.E("$v", err)
@@ -85,6 +79,6 @@ func OnUserOffline(id gate.ID) {
 	_ = sub.Publish(chanId, &subscription_impl.PublishMessage{
 		From:    "system",
 		Type:    subscription_impl.TypeMessage,
-		Message: messages.NewMessage(0, messages2.ActionGroupMessage, b),
+		Message: messages.NewMessage(0, messages.ActionGroupMessage, b),
 	})
 }

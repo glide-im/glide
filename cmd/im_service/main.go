@@ -61,7 +61,7 @@ func main() {
 		logger.D("Common.StoreMessageHistory is false, message history will not be stored")
 	}
 
-	handler, err := messaging.NewHandlerWithOptions(&messaging.MessageHandlerOptions{
+	handler, err := messaging.NewHandlerWithOptions(gateway, &messaging.MessageHandlerOptions{
 		MessageStore:           cStore,
 		DontInitDefaultHandler: true,
 		NotifyOnErr:            true,
@@ -70,7 +70,6 @@ func main() {
 		panic(err)
 	}
 	messaging.StoreOfflineMessage = config.Common.StoreOfflineMessage
-	handler.SetGate(gateway)
 
 	subscription := subscription_impl.NewSubscription(sStore, sStore)
 	subscription.SetGateInterface(gateway)

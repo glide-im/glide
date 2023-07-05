@@ -13,6 +13,7 @@ const (
 	ActionChatMessage       = "message.chat"
 	ActionChatMessageResend = "message.chat.resend"
 	ActionGroupMessage      = "message.group"
+	ActionClientCustom      = "message.cli"
 
 	ActionAuthenticate          = "authenticate"
 	ActionNotifyError           = "notify.error"
@@ -20,6 +21,18 @@ const (
 	ActionNotifyKickOut         = "notify.kickout"
 	ActionNotifyForbidden       = "notify.forbidden"
 	ActionNotifyUnauthenticated = "notify.unauthenticated"
+	ActionNotifyUserState       = "notify.state"
+
+	ActionAckRequest  = "ack.request"
+	ActionAckGroupMsg = "ack.group.msg"
+	ActionAckMessage  = "ack.message"
+	ActionAckNotify   = "ack.notify"
+	AckOffline        = "ack.offline"
+
+	ActionApiGroupMembers = "api.group.members"
+	ActionApiSubUserState = "api.state.sub"
+	ActionApiFailed       = "api.failed"
+	ActionApiSuccess      = "api.success"
 
 	ActionInternalOnline  = "internal.online"
 	ActionInternalOffline = "internal.offline"

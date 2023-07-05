@@ -1,7 +1,6 @@
 package messaging
 
 import (
-	messages2 "github.com/glide-im/glide/im_service/messages"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
@@ -15,9 +14,6 @@ type MessageHandlerOptions struct {
 	// MessageStore chat message store
 	MessageStore store.MessageStore
 
-	// OfflineHandleFn client offline, handle message
-	OfflineHandleFn func(h *MessageHandlerImpl, ci *gate.Info, pushMessage *messages.GlideMessage)
-
 	// DontInitDefaultHandler true will not init default action offlineMessageHandler, MessageHandlerImpl.InitDefaultHandler
 	DontInitDefaultHandler bool
 
@@ -30,10 +26,10 @@ type MessageHandlerImpl struct {
 	def   *MessageInterfaceImpl
 	store store.MessageStore
 
-	offlineHandleFn func(h *MessageHandlerImpl, ci *gate.Info, m *messages.GlideMessage)
+	userState *UserState
 }
 
-func NewHandlerWithOptions(opts *MessageHandlerOptions) (*MessageHandlerImpl, error) {
+func NewHandlerWithOptions(gateway gate.Gateway, opts *MessageHandlerOptions) (*MessageHandlerImpl, error) {
 	impl, err := NewDefaultImpl(&Options{
 		NotifyServerError:     true,
 		MaxMessageConcurrency: 10_0000,
@@ -42,15 +38,15 @@ func NewHandlerWithOptions(opts *MessageHandlerOptions) (*MessageHandlerImpl, er
 		return nil, err
 	}
 	impl.SetNotifyErrorOnServer(opts.NotifyOnErr)
+
 	ret := &MessageHandlerImpl{
-		def:             impl,
-		store:           opts.MessageStore,
-		offlineHandleFn: opts.OfflineHandleFn,
+		def:       impl,
+		store:     opts.MessageStore,
+		userState: NewUserState(gateway),
 	}
 	if !opts.DontInitDefaultHandler {
 		ret.InitDefaultHandler(nil)
 	}
-	ret.offlineHandleFn = offlineMessageHandler
 	return ret, nil
 }
 
@@ -58,14 +54,18 @@ func NewHandlerWithOptions(opts *MessageHandlerOptions) (*MessageHandlerImpl, er
 // 初始化 message.Action 对应的默认 Handler, 部分类型的 Action 才有默认 Handler, 若要修改特定 Action 的默认 Handler 则可以在
 // callback 回调中返回你需要的即可, callback 参数 fn 既是该 action 对的默认 Handler.
 func (d *MessageHandlerImpl) InitDefaultHandler(callback func(action messages.Action, fn HandlerFunc) HandlerFunc) {
+
 	m := map[messages.Action]HandlerFunc{
-		messages2.ActionChatMessage:     d.handleChatMessage,
-		messages2.ActionGroupMessage:    d.handleGroupMsg,
-		messages2.ActionApiGroupMembers: d.handleApiGroupMembers,
-		messages2.ActionAckRequest:      d.handleAckRequest,
-		messages2.ActionAckGroupMsg:     d.handleAckGroupMsgRequest,
-		messages2.AckOffline:            d.handleAckOffline,
-		messages2.ActionHeartbeat:       d.handleHeartbeat,
+		messages.ActionChatMessage:     d.handleChatMessage,
+		messages.ActionGroupMessage:    d.handleGroupMsg,
+		messages.ActionApiGroupMembers: d.handleApiGroupMembers,
+		messages.ActionAckRequest:      d.handleAckRequest,
+		messages.ActionAckGroupMsg:     d.handleAckGroupMsgRequest,
+		messages.AckOffline:            d.handleAckOffline,
+		messages.ActionHeartbeat:       d.handleHeartbeat,
+		messages.ActionInternalOnline:  d.handleInternalOnline,
+		messages.ActionInternalOffline: d.handleInternalOffline,
+		messages.ActionApiSubUserState: d.userState.subUserStateApi,
 	}
 	for action, handlerFunc := range m {
 		if callback != nil {
@@ -74,7 +74,6 @@ func (d *MessageHandlerImpl) InitDefaultHandler(callback func(action messages.Ac
 		d.def.AddHandler(NewActionHandler(action, handlerFunc))
 	}
 
-	d.def.AddHandler(&InternalActionHandler{})
 	d.def.AddHandler(&ClientCustomMessageHandler{})
 	d.def.AddHandler(NewActionHandler(messages.ActionHeartbeat, handleHeartbeat))
 }
