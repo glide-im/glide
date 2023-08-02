@@ -1,7 +1,9 @@
 package subscription_impl
 
 import (
+	"crypto/md5"
 	"errors"
+	"fmt"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
@@ -36,7 +38,8 @@ type ChannelSequenceStore interface {
 
 // SubscriberOptions is the options for the subscriber
 type SubscriberOptions struct {
-	Perm Permission
+	Perm   Permission
+	Ticket string
 }
 
 // getSubscriberOptions assertion type of `i` is *SubscribeOptions
@@ -126,6 +129,7 @@ func NewChannel(chanID subscription.ChanID, gate gate.DefaultGateway,
 func (g *Channel) Update(ci *subscription.ChanInfo) error {
 	g.info.Blocked = ci.Blocked
 	g.info.Muted = ci.Muted
+	g.info.Secret = ci.Secret
 	return nil
 }
 
@@ -157,6 +161,18 @@ func (g *Channel) Subscribe(id subscription.SubscriberID, extra interface{}) err
 	if ok {
 		return sb.update(so)
 	} else {
+		if len(g.info.Secret) != 0 {
+			if len(so.Ticket) == 0 {
+				g.mu.Unlock()
+				return errors.New("invalid ticket")
+			}
+			c := fmt.Sprintf("%d_%s_%s", so.Perm, id, g.info.Secret)
+			ticket := fmt.Sprintf("%x", md5.Sum([]byte(c)))
+			if ticket != so.Ticket {
+				g.mu.Unlock()
+				return errors.New("invalid ticket")
+			}
+		}
 		g.subscribers[id] = NewSubscriberInfo(so)
 		logger.I("subscriber %s subscribe channel %s", id, g.id)
 	}

@@ -1,6 +1,8 @@
 package subscription_impl
 
 import (
+	"crypto/md5"
+	"fmt"
 	"github.com/glide-im/glide/pkg/gate"
 	"github.com/glide-im/glide/pkg/messages"
 	"github.com/glide-im/glide/pkg/subscription"
@@ -201,4 +203,17 @@ func TestChannel_Close(t *testing.T) {
 	assert.NoError(t, err)
 	err = channel.Publish(&PublishMessage{From: "t", Type: TypeMessage})
 	assert.Error(t, err)
+}
+
+func TestWrap_Subscribe(t *testing.T) {
+	channel := mockNewChannel("test")
+	err := channel.Update(&subscription.ChanInfo{
+		Secret: "ABC",
+	})
+	assert.NoError(t, err)
+	c := fmt.Sprintf("%d_%s_%s", normalOpts.Perm, "sb_test", "ABC")
+	ticket := fmt.Sprintf("%x", md5.Sum([]byte(c)))
+	normalOpts.Ticket = ticket
+	err = channel.Subscribe("sb_test", normalOpts)
+	assert.NoError(t, err)
 }

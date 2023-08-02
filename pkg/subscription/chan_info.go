@@ -15,6 +15,8 @@ type ChanInfo struct {
 	Blocked bool
 	Closed  bool
 
+	Secret string
+
 	Parent *ChanID
 	Child  []ChanID
 }

@@ -28,7 +28,7 @@ func (d *MessageHandlerImpl) handleGroupMsg(c *gate.Info, msg *messages.GlideMes
 
 	if err != nil {
 		logger.E("dispatch group message error: %v", err)
-		notify := messages.NewMessage(msg.GetSeq(), messages.ActionNotifyError, nil)
+		notify := messages.NewMessage(msg.GetSeq(), messages.ActionNotifyError, err.Error())
 		d.enqueueMessage(c.ID, notify)
 	} else {
 		_ = d.ackChatMessage(c, &cm)

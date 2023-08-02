@@ -159,6 +159,10 @@ func (u *realSubscription) CreateChannel(chID subscription.ChanID, update *subsc
 	if err != nil {
 		return err
 	}
+	err = channel.Update(update)
+	if err != nil {
+		return err
+	}
 	u.channels[chID] = channel
 	return nil
 }
