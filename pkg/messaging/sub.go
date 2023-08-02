@@ -20,7 +20,7 @@ func (d *MessageHandlerImpl) handleGroupMsg(c *gate.Info, msg *messages.GlideMes
 	}
 
 	m := subscription_impl.PublishMessage{
-		From:    subscription.SubscriberID(gate.NewID2(msg.From)),
+		From:    subscription.SubscriberID(msg.From),
 		Message: msg,
 		Type:    subscription_impl.TypeMessage,
 	}

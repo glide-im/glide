@@ -153,13 +153,42 @@ func (g *Channel) Subscribe(id subscription.SubscriberID, extra interface{}) err
 	}
 
 	g.mu.Lock()
-	defer g.mu.Unlock()
-
 	sb, ok := g.subscribers[id]
 	if ok {
 		return sb.update(so)
+	} else {
+		g.subscribers[id] = NewSubscriberInfo(so)
+		logger.I("subscriber %s subscribe channel %s", id, g.id)
 	}
-	g.subscribers[id] = NewSubscriberInfo(so)
+	g.mu.Unlock()
+
+	onlineNotify := PublishMessage{
+		Message: messages.NewMessage(0, messages.ActionGroupNotify, subscription.NotifyMessage{
+			From: "system",
+			Type: subscription.NotifyTypeOnline,
+			Body: struct {
+				Uid string `json:"uid"`
+			}{
+				string(id),
+			},
+		}),
+	}
+	_ = g.enqueueNotify(&onlineNotify)
+
+	statusNotify := PublishMessage{
+		To: []subscription.SubscriberID{id},
+		Message: messages.NewMessage(0, messages.ActionGroupNotify, subscription.NotifyMessage{
+			From: "system",
+			Type: subscription.NotifyOnlineMembers,
+			Body: struct {
+				Members []string `json:"members"`
+			}{
+				g.GetSubscribers(),
+			},
+		}),
+	}
+	_ = g.enqueueNotify(&statusNotify)
+
 	return nil
 }
 
@@ -172,6 +201,19 @@ func (g *Channel) Unsubscribe(id subscription.SubscriberID) error {
 		return errors.New(subscription.ErrNotSubscribed)
 	}
 	delete(g.subscribers, id)
+
+	onlineNotify := PublishMessage{
+		Message: messages.NewMessage(0, messages.ActionGroupNotify, subscription.NotifyMessage{
+			From: "system",
+			Type: subscription.NotifyTypeOffline,
+			Body: struct {
+				Uid string `json:"uid"`
+			}{
+				string(id),
+			},
+		}),
+	}
+	_ = g.enqueueNotify(&onlineNotify)
 	return nil
 }
 
@@ -360,7 +402,7 @@ func (g *Channel) push(message *PublishMessage) {
 		if !sInfo.canRead() {
 			continue
 		}
-		err := g.gate.EnqueueMessage(gate.ID(subscriberID), message.Message)
+		err := g.gate.EnqueueMessage(gate.NewID2(string(subscriberID)), message.Message)
 		if err != nil {
 			logger.E("chan %s push message to subscribe %s error: %v", g.id, subscriberID, err)
 		}

@@ -13,6 +13,7 @@ const (
 	ActionChatMessage       = "message.chat"
 	ActionChatMessageResend = "message.chat.resend"
 	ActionGroupMessage      = "message.group"
+	ActionGroupNotify       = "message.group.notify"
 	ActionClientCustom      = "message.cli"
 
 	ActionAuthenticate          = "authenticate"

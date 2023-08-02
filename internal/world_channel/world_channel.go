@@ -29,7 +29,7 @@ func OnUserOnline(id gate.ID) {
 	if id.IsTemp() {
 		return
 	}
-	myId := subscription.SubscriberID(gate.NewID2(id.UID()))
+	myId := subscription.SubscriberID(id.UID())
 	err := sub.Subscribe(chanId, myId,
 		&subscription_impl.SubscriberOptions{Perm: subscription_impl.PermRead | subscription_impl.PermWrite})
 	if err == nil {

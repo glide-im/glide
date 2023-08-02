@@ -81,8 +81,6 @@ type Impl struct {
 
 	// pool of ants, used to process messages concurrently.
 	pool *ants.Pool
-
-	emptyInfo *Info
 }
 
 func NewServer(options *Options) (*Impl, error) {
@@ -91,9 +89,6 @@ func NewServer(options *Options) (*Impl, error) {
 	ret.clients = map[ID]Client{}
 	ret.mu = sync.RWMutex{}
 	ret.id = options.ID
-	ret.emptyInfo = &Info{
-		ID: NewID(ret.id, "", ""),
-	}
 
 	if options.SecretKey != "" {
 		ret.authenticator = NewAuthenticator(ret, options.SecretKey)
@@ -171,7 +166,8 @@ func (c *Impl) AddClient(cs Client) {
 	}
 
 	c.clients[id] = cs
-	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOnline, id))
+	info := cs.GetInfo()
+	c.msgHandler(&info, messages.NewMessage(0, messages.ActionInternalOnline, id))
 }
 
 // SetClientID replace the oldID with newID of the client.
@@ -193,10 +189,12 @@ func (c *Impl) SetClientID(oldID, newID ID) error {
 		return errors.New(errClientAlreadyExist)
 	}
 
+	oldInfo := cli.GetInfo()
 	cli.SetID(newID)
+	newInfo := cli.GetInfo()
 	delete(c.clients, oldID)
-	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOffline, oldID))
-	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOnline, newID))
+	c.msgHandler(&oldInfo, messages.NewMessage(0, messages.ActionInternalOffline, oldID))
+	c.msgHandler(&newInfo, messages.NewMessage(0, messages.ActionInternalOnline, newID))
 
 	c.clients[newID] = cli
 	return nil
@@ -217,7 +215,8 @@ func (c *Impl) ExitClient(id ID) error {
 
 	cli.SetID("")
 	delete(c.clients, id)
-	c.msgHandler(c.emptyInfo, messages.NewMessage(0, messages.ActionInternalOffline, id))
+	info := cli.GetInfo()
+	c.msgHandler(&info, messages.NewMessage(0, messages.ActionInternalOffline, id))
 	cli.Exit()
 
 	return nil

@@ -63,7 +63,7 @@ func main() {
 
 	handler, err := messaging.NewHandlerWithOptions(gateway, &messaging.MessageHandlerOptions{
 		MessageStore:           cStore,
-		DontInitDefaultHandler: true,
+		DontInitDefaultHandler: false,
 		NotifyOnErr:            true,
 	})
 	if err != nil {
@@ -73,6 +73,9 @@ func main() {
 
 	subscription := subscription_impl.NewSubscription(sStore, sStore)
 	subscription.SetGateInterface(gateway)
+
+	handler.SetSubscription(subscription)
+	handler.SetGate(gateway)
 
 	go func() {
 		logger.D("websocket listening on %s:%d", config.WsServer.Addr, config.WsServer.Port)

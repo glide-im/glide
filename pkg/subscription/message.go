@@ -9,3 +9,18 @@ type Message interface {
 	// GetChatMessage convert message body to *messages.ChatMessage
 	GetChatMessage() (*messages.ChatMessage, error)
 }
+
+const (
+	NotifyTypeOffline = 1
+	NotifyTypeOnline  = 2
+	NotifyTypeJoin    = 3
+	NotifyTypeLeave   = 4
+
+	NotifyOnlineMembers = 5
+)
+
+type NotifyMessage struct {
+	From string      `json:"from"`
+	Type int         `json:"type"`
+	Body interface{} `json:"body"`
+}
