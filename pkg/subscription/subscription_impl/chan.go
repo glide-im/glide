@@ -156,6 +156,8 @@ func (g *Channel) Subscribe(id subscription.SubscriberID, extra interface{}) err
 		return errors.New("channel is blocked")
 	}
 
+	logger.I("subscriber %s subscribe channel %s", id, g.id)
+
 	g.mu.Lock()
 	sb, ok := g.subscribers[id]
 	if ok {
@@ -212,6 +214,7 @@ func (g *Channel) Unsubscribe(id subscription.SubscriberID) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	logger.I("subscriber %s unsubscribe channel %s", id, g.id)
 	_, ok := g.subscribers[id]
 	if !ok {
 		return errors.New(subscription.ErrNotSubscribed)

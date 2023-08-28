@@ -213,9 +213,9 @@ func (c *Impl) ExitClient(id ID) error {
 		return errors.New(errClientNotExist)
 	}
 
+	info := cli.GetInfo()
 	cli.SetID("")
 	delete(c.clients, id)
-	info := cli.GetInfo()
 	c.msgHandler(&info, messages.NewMessage(0, messages.ActionInternalOffline, id))
 	cli.Exit()
 

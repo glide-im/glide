@@ -66,7 +66,10 @@ func OnUserOffline(id gate.ID) {
 	if id.IsTemp() {
 		return
 	}
-	_ = sub.UnSubscribe(chanId, subscription.SubscriberID(gate.NewID2(id.UID())))
+	err := sub.UnSubscribe(chanId, subscription.SubscriberID(id.UID()))
+	if err != nil {
+		logger.E("$v", err)
+	}
 	b, _ := json.Marshal(&messages.ChatMessage{
 		Mid:     time.Now().UnixNano(),
 		Seq:     0,
