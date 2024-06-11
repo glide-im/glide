@@ -33,14 +33,16 @@ type ClientCustom struct {
 
 // AckRequest 接收者回复给服务端确认收到消息
 type AckRequest struct {
-	Seq  int64  `json:"seq,omitempty"`
-	Mid  int64  `json:"mid,omitempty"`
-	From string `json:"from,omitempty"`
+	CliMid string `json:"cli_mid,omitempty"`
+	Seq    int64  `json:"seq,omitempty"`
+	Mid    int64  `json:"mid,omitempty"`
+	From   string `json:"from,omitempty"`
+	To     string `json:"to,omitempty"`
 }
 
 // AckGroupMessage 发送群消息服务器回执
 type AckGroupMessage struct {
-	CliMid string `json:"cliMid,omitempty"`
+	CliMid string `json:"cli_mid,omitempty"`
 	Gid    int64  `json:"gid,omitempty"`
 	Mid    int64  `json:"mid,omitempty"`
 	Seq    int64  `json:"seq,omitempty"`
@@ -48,15 +50,19 @@ type AckGroupMessage struct {
 
 // AckMessage 服务端通知发送者的服务端收到消息
 type AckMessage struct {
-	CliMid string `json:"cliMid,omitempty"`
+	CliMid string `json:"cli_mid,omitempty"`
 	/// message id to tall the client
-	Mid int64 `json:"mid,omitempty"`
-	Seq int64 `json:"seq,omitempty"`
+	Mid  int64  `json:"mid,omitempty"`
+	From string `json:"from,omitempty"`
+	Seq  int64  `json:"seq,omitempty"`
 }
 
 // AckNotify 服务端下发给发送者的消息送达通知
 type AckNotify struct {
-	Mid int64 `json:"mid,omitempty"`
+	CliMid string `json:"cli_mid,omitempty"`
+	Seq    int64  `json:"seq,omitempty"`
+	Mid    int64  `json:"mid,omitempty"`
+	From   string `json:"from,omitempty"`
 }
 
 type KickOutNotify struct {

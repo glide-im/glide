@@ -48,16 +48,22 @@ func (d *MessageHandlerImpl) handleChatRecallMessage(c *gate.Info, msg *messages
 }
 
 func (d *MessageHandlerImpl) ackNotifyMessage(c *gate.Info, m *messages.ChatMessage) error {
-	ackNotify := messages.AckNotify{Mid: m.Mid}
+	ackNotify := messages.AckNotify{
+		CliMid: m.CliMid,
+		Mid:    m.Mid,
+		Seq:    m.Seq,
+		From:   m.From,
+	}
 	msg := messages.NewMessage(0, messages.ActionAckNotify, &ackNotify)
-	return d.def.GetClientInterface().EnqueueMessage(c.ID, msg)
+	return d.def.GetClientInterface().EnqueueMessage(gate.NewID2(m.To), msg)
 }
 
 func (d *MessageHandlerImpl) ackChatMessage(c *gate.Info, msg *messages.ChatMessage) error {
 	ackMsg := messages.AckMessage{
 		CliMid: msg.CliMid,
 		Mid:    msg.Mid,
-		Seq:    0,
+		Seq:    msg.Seq,
+		From:   msg.To,
 	}
 	ack := messages.NewMessage(0, messages.ActionAckMessage, &ackMsg)
 	return d.def.GetClientInterface().EnqueueMessage(c.ID, ack)
