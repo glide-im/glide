@@ -158,27 +158,27 @@ func (g *Channel) Subscribe(id subscription.SubscriberID, extra interface{}) err
 
 	logger.I("subscriber %s subscribe channel %s", id, g.id)
 
-	g.mu.Lock()
+	g.mu.RLock()
 	sb, ok := g.subscribers[id]
+	g.mu.RUnlock()
 	if ok {
 		return sb.update(so)
 	} else {
 		if len(g.info.Secret) != 0 {
 			if len(so.Ticket) == 0 {
-				g.mu.Unlock()
 				return errors.New("invalid ticket")
 			}
 			c := fmt.Sprintf("%d_%s_%s", so.Perm, id, g.info.Secret)
 			ticket := fmt.Sprintf("%x", md5.Sum([]byte(c)))
 			if ticket != so.Ticket {
-				g.mu.Unlock()
 				return errors.New("invalid ticket")
 			}
 		}
+		g.mu.Lock()
 		g.subscribers[id] = NewSubscriberInfo(so)
+		g.mu.Unlock()
 		logger.I("subscriber %s subscribe channel %s", id, g.id)
 	}
-	g.mu.Unlock()
 
 	onlineNotify := PublishMessage{
 		Message: messages.NewMessage(0, messages.ActionGroupNotify, subscription.NotifyMessage{
@@ -274,8 +274,7 @@ func (g *Channel) Publish(msg subscription.Message) error {
 	case TypeNotify:
 		return g.enqueueNotify(message)
 	case TypeMessage:
-		err := g.enqueue(message)
-		return err
+		return g.enqueue(message)
 	default:
 		return errors.New(errUnknownMessageType)
 	}
